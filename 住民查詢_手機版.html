@@ -474,6 +474,63 @@
         .hidden-file-input {
             display: none;
         }
+
+        /* Mobile hamburger button - always visible on mobile */
+        .mobile-hamburger {
+            display: none;
+            position: fixed;
+            top: 8px;
+            left: 8px;
+            z-index: 200;
+            width: 40px;
+            height: 40px;
+            background: #1e5a3b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 22px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        /* Sidebar overlay */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.4);
+            z-index: 90;
+        }
+
+        .sidebar-overlay.show {
+            display: block;
+        }
+
+        @media (max-width: 600px) {
+            .mobile-hamburger {
+                display: block;
+            }
+
+            #sidebar {
+                width: 200px;
+                left: -220px;
+            }
+
+            #sidebar.open {
+                left: 0;
+            }
+
+            #drugsTable {
+                -webkit-overflow-scrolling: touch;
+            }
+
+            #drugsTable table {
+                min-width: 600px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -489,6 +546,10 @@
 
     <!-- Main App -->
     <div id="mainApp">
+        <!-- Mobile hamburger button (always visible on mobile) -->
+        <button class="mobile-hamburger" onclick="toggleSidebar()">☰</button>
+        <!-- Sidebar overlay -->
+        <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
         <!-- Sidebar -->
         <div id="sidebar">
             <button class="hamburger" onclick="toggleSidebar()">☰</button>
@@ -756,7 +817,8 @@
             });
         }
 
-        document.getElementById('labChart').addEventListener('click', function() {
+        document.getElementById('chartContainer').addEventListener('click', function(e) {
+            e.stopPropagation();
             document.getElementById('chartContainer').classList.remove('show');
             selectedLabItem = null;
             updateLabsTable();
@@ -768,12 +830,15 @@
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
             sidebar.classList.toggle('open');
+            overlay.classList.toggle('show');
         }
 
         function closeSidebarOnMobile() {
             if (window.innerWidth < 600) {
                 document.getElementById('sidebar').classList.remove('open');
+                document.querySelector('.sidebar-overlay').classList.remove('show');
             }
         }
 
