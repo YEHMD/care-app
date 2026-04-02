@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>住民查詢系統</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            background: #f5f5f5;
+        }
+
+        /* Login Page */
+        #loginPage {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            flex-direction: column;
+        }
+
+        .login-box {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            min-width: 300px;
+        }
+
+        .login-emoji {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .login-box h1 {
+            color: #22c55e;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+
+        .login-box input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+
+        .login-box input:focus {
+            outline: none;
+            border-color: #22c55e;
+        }
+
+        .login-box button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .login-box button:hover {
+            transform: scale(1.02);
+        }
+
+        .login-box button:active {
+            transform: scale(0.98);
+        }
+
+        /* Main App */
+        #mainApp {
+            display: none;
+            flex: 1;
+            overflow: hidden;
+            height: 100vh;
+            flex-direction: row;
+        }
+
+        #mainApp.show {
+            display: flex;
+        }
+
+        /* Sidebar */
+        #sidebar {
+            width: 80px;
+            background: #1e5a3b;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: width 0.3s;
+        }
+
+        #sidebar.expanded {
+            width: 200px;
+        }
+
+        .sidebar-header {
+            padding: 12px;
+            text-align: center;
+            background: #164a2f;
+            border-bottom: 1px solid #0f3620;
+            font-weight: bold;
+            font-size: 12px;
+            white-space: nowrap;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hamburger {
+            display: none;
+            width: 100%;
+            padding: 8px;
+            background: #164a2f;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        #residentList {
+            flex: 1;
+            overflow-y: auto;
+            list-style: none;
+        }
+
+        .resident-item {
+            padding: 12px 8px;
+            border-bottom: 1px solid #0f3620;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-align: center;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .resident-item:hover {
+            background: #0f3620;
+        }
+
+        .resident-item.active {
+            background: #0a2817;
+            font-weight: bold;
+        }
+
+        .sidebar-footer {
+            padding: 12px;
+            border-top: 1px solid #0f3620;
+            text-align: center;
+        }
+
+        .sync-btn {
+            width: 100%;
+            padding: 8px;
+            background: #22c55e;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        .sync-btn:hover {
+            background: #16a34a;
+        }
+
+        /* Main Content */
+        #mainContent {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .topbar {
+            background: white;
+            border-bottom: 2px solid #e5e7eb;
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            min-height: 60px;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #f0f9ff;
+            color: #0369a1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            border: 1px solid #bae6fd;
+            font-weight: 500;
+        }
+
+        .tag.name {
+            background: #dcfce7;
+            color: #166534;
+            border-color: #86efac;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Content Container */
+        .content-container {
+            flex: 1;
+            display: flex;
+            gap: 0;
+            overflow: hidden;
+        }
+
+        /* Drugs Section */
+        #drugsSection {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-right: 1px solid #e5e7eb;
+        }
+
+        .section-title {
+            padding: 12px 16px;
+            background: #f9fafb;
+            font-weight: 600;
+            color: #1f2937;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 14px;
+        }
+
+        #drugsTable {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+
+        .drugs-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .drugs-table thead {
+            position: sticky;
+            top: 0;
+            background: #f3f4f6;
+            z-index: 10;
+        }
+
+        .drugs-table th {
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #d1d5db;
+            white-space: nowrap;
+        }
+
+        .drugs-table td {
+            padding: 8px;
+            border-bottom: 1px solid #e5e7eb;
+            word-break: break-word;
+        }
+
+        .drugs-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .freq-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .freq-QD {
+            background: #3b82f6;
+        }
+
+        .freq-BID {
+            background: #a855f7;
+        }
+
+        .freq-TID {
+            background: #ec4899;
+        }
+
+        .freq-QID {
+            background: #ef4444;
+        }
+
+        .freq-HS {
+            background: #06b6d4;
+        }
+
+        .freq-PRN {
+            background: #f97316;
+        }
+
+        .freq-QOD {
+            background: #8b5cf6;
+        }
+
+        /* Labs Section */
+        #labsSection {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #chartContainer {
+            display: none;
+            padding: 12px;
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        #chartContainer.show {
+            display: block;
+        }
+
+        #labChart {
+            max-height: 200px;
+            cursor: pointer;
+        }
+
+        #labsTable {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+
+        .labs-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .labs-table thead {
+            position: sticky;
+            top: 0;
+            background: #f3f4f6;
+            z-index: 10;
+        }
+
+        .labs-table th {
+            padding: 8px;
+            text-align: center;
+            font-weight: 600;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            white-space: nowrap;
+            font-size: 11px;
+        }
+
+        .labs-table td {
+            padding: 8px;
+            text-align: center;
+            border: 1px solid #e5e7eb;
+            font-size: 11px;
+        }
+
+        .labs-table tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        .labs-table .item-name {
+            text-align: left;
+            font-weight: 500;
+            background: #f9fafb;
+            cursor: pointer;
+        }
+
+        .labs-table .item-name:hover {
+            background: #f3f4f6;
+        }
+
+        .labs-table .item-name.active {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .abnormal {
+            color: #dc2626;
+            font-weight: bold;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 600px) {
+            .hamburger {
+                display: block;
+            }
+
+            #sidebar {
+                position: absolute;
+                height: 100%;
+                z-index: 100;
+                left: -80px;
+                transition: left 0.3s;
+            }
+
+            #sidebar.open {
+                left: 0;
+            }
+
+            .content-container {
+                flex-direction: column;
+            }
+
+            #drugsSection {
+                border-right: none;
+                border-bottom: 1px solid #e5e7eb;
+            }
+
+            .topbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .tag {
+                font-size: 11px;
+                padding: 4px 8px;
+            }
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .hidden-file-input {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage">
+        <div class="login-box">
+            <div class="login-emoji">🏥</div>
+            <h1>住民查詢系統</h1>
+            <input type="password" id="passwordInput" placeholder="請輸入密碼" />
+            <button onclick="handleLogin()">登入</button>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp">
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <div class="sidebar-header">住民名單</div>
+            <ul id="residentList"></ul>
+            <div class="sidebar-footer">
+                <button class="sync-btn" onclick="triggerFileUpload()">同步</button>
+                <input type="file" id="fileInput" class="hidden-file-input" accept=".xlsx,.xls" />
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent">
+            <!-- Top Bar -->
+            <div class="topbar" id="topbar"></div>
+
+            <!-- Content Container -->
+            <div class="content-container">
+                <!-- Drugs Section -->
+                <div id="drugsSection">
+                    <div class="section-title">藥品</div>
+                    <div id="drugsTable"></div>
+                </div>
+
+                <!-- Labs Section -->
+                <div id="labsSection">
+                    <div class="section-title">檢驗結果</div>
+                    <div id="chartContainer">
+                        <canvas id="labChart"></canvas>
+                    </div>
+                    <div id="labsTable"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Embedded resident data
+        const RESIDENTS_DATA = [{"name":"薛紫金","bed":"D01","gender":"女","cat":"體檢住民","age":"82","adm":"108.07.01","drugs":[{"hospital":"桃園療養院","dept":"精神科","drug":"Benserazide 25mg+Levodopa 100mg","dose":"125mg","qty":"1#","freq":"QD","start":"03/03","end":"03/30"},{"hospital":"桃園療養院","dept":"精神科","drug":"Ativan 0.5mg 2# HS","dose":"0.5mg","qty":"2#","freq":"HS","start":"03/03","end":"03/30"},{"hospital":"桃園療養院","dept":"精神科","drug":"Rosuvastatin 5mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"03/03","end":"03/30"},{"hospital":"桃園療養院","dept":"精神科","drug":"Metformin 500mg 1# BID","dose":"500mg","qty":"1#","freq":"BID","start":"03/03","end":"03/30"},{"hospital":"桃園療養院","dept":"精神科","drug":"Piracetam 400mg 1# BID","dose":"400mg","qty":"1#","freq":"BID","start":"03/03","end":"03/30"},{"hospital":"桃園療養院","dept":"精神科","drug":"Sulpiride 50mg 1# HS","dose":"50mg","qty":"1#","freq":"HS","start":"03/03","end":"03/30"},{"hospital":"桃園療養院","dept":"精神科","drug":"Concor 5mg 0.5# QD","dose":"5mg","qty":"0.5#","freq":"QD","start":"03/03","end":"03/30"},{"hospital":"桃園療養院","dept":"精神科","drug":"Mirtazapine 15mg 1# HS, 治療抑鬱症","dose":"15mg","qty":"1#","freq":"HS","start":"03/03","end":"03/30"}],"labs":[{"date":"115-02-24","source":"薛紫金","items":[{"name":"ACSugar","value":"103(H)","abnormal":true},{"name":"HBA1c","value":"5.7(H)","abnormal":true},{"name":"Triglyceride","value":"101","abnormal":false},{"name":"HDLCholesterol","value":"26(L)","abnormal":true},{"name":"LDLCholesterol","value":"53","abnormal":false},{"name":"Creatinine","value":"1.02","abnormal":false},{"name":"e-GFR","value":"54.93(L)","abnormal":true},{"name":"Ur-ACr","value":"7.74","abnormal":false},{"name":"B.U.N.","value":"12","abnormal":false},{"name":"Albumin","value":"3.5","abnormal":false},{"name":"Hemoglobin","value":"7.6(L)","abnormal":true},{"name":"TotalCholesterol","value":"99","abnormal":false},{"name":"Alkaline-Phosphatase","value":"121(H)","abnormal":true},{"name":"DirectBilirubin","value":"0.33(H)","abnormal":true},{"name":"TotalProtein","value":"7.1","abnormal":false},{"name":"Potassium[K]","value":"4.2","abnormal":false},{"name":"W.B.C.Count","value":"3.0(L)","abnormal":true},{"name":"R.B.C.Count","value":"2.21(L)","abnormal":true},{"name":"Hemoglobin","value":"7.6(L)","abnormal":true},{"name":"Hematocrit","value":"22.4(L)","abnormal":true},{"name":"M.C.V.","value":"101.1(H)","abnormal":true},{"name":"M.C.H.C.","value":"33.9","abnormal":false},{"name":"Platelet","value":"170","abnormal":false},{"name":"NeturophilSegment","value":"35.7(L)","abnormal":true},{"name":"Monocytes","value":"11.7","abnormal":false},{"name":"Basophilis","value":"3.9(H)","abnormal":true},{"name":"Urinecreatinine","value":"38.78(L)","abnormal":true},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"(-)","abnormal":false},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"(-)","abnormal":false},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"22","abnormal":false},{"name":"S.G.P.T(ALT)","value":"8","abnormal":false},{"name":"r-GTP(GGT)","value":"105(H)","abnormal":true},{"name":"TotalBilirubin","value":"1.28(H)","abnormal":true},{"name":"Globulin","value":"3.6","abnormal":false},{"name":"A/GRatio","value":"1.0(L)","abnormal":true},{"name":"Calcium[Ca]","value":"9.6","abnormal":false},{"name":"Sodium[Na]","value":"137.7","abnormal":false},{"name":"Amylase","value":"56","abnormal":false},{"name":"UricAcid","value":"6.6","abnormal":false},{"name":"M.C.H.","value":"34.3(H)","abnormal":true},{"name":"Lymphocyte","value":"47.8","abnormal":false},{"name":"Eosinophilic","value":"0.9","abnormal":false},{"name":"Microalbumin","value":"0.30","abnormal":false},{"name":"Color","value":"Yellow","abnormal":false},{"name":"Protein","value":"(-)","abnormal":false},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"6.0","abnormal":false},{"name":"U-RBC","value":"0-2","abnormal":false},{"name":"EPITHELIALCELLS","value":"0-4","abnormal":false},{"name":"Crystal","value":"(-)","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"(-)","abnormal":false},{"name":"Appearance","value":"Clear","abnormal":false},{"name":"Nitrite","value":"(+)(H)","abnormal":true},{"name":"SPECIFICGRAVITY","value":"1.006","abnormal":false}]},{"date":"114-12-17","source":"薛紫金","items":[{"name":"HBA1c","value":"5.8(H)","abnormal":true}]}]},{"name":"陳秀桃","bed":"D02","gender":"女","cat":"體檢住民","age":"72","adm":"113.11.13","drugs":[{"hospital":"林口長庚","dept":"感染科","drug":"Sodium Bicarbonate 600mg 1# BID","dose":"600mg","qty":"1#","freq":"BID","start":"02/26","end":"03/25"},{"hospital":"林口長庚","dept":"感染科","drug":"Cortisone 25mg 1# QOD","dose":"25mg","qty":"1#","freq":"QOD","start":"02/26","end":"03/25"},{"hospital":"林口長庚","dept":"感染科","drug":"Feburic 80mg 1# QD, 尿酸","dose":"80mg","qty":"1#","freq":"QD","start":"02/26","end":"03/25"},{"hospital":"林口長庚","dept":"感染科","drug":"Bethanechol 25mg 1# TID","dose":"25mg","qty":"1#","freq":"TID","start":"02/26","end":"03/25"},{"hospital":"林口長庚","dept":"感染科","drug":"Sennoside A+B 12mg 2# HS","dose":"12mg","qty":"2#","freq":"HS","start":"02/26","end":"03/25"},{"hospital":"林口長庚","dept":"感染科","drug":"Takepron Od 30mg 1# QDAC, PUD 潰瘍","dose":"30mg","qty":"1#","freq":"QDAC","start":"02/26","end":"03/25"},{"hospital":"林口長庚","dept":"神經科","drug":"Alpraline 0.5mg 1# BID","dose":"100mg","qty":"1#","freq":"QDAC","start":"02/26","end":"03/25"},{"hospital":"林口長庚","dept":"神經科","drug":"Piracetam 1200mg 1# QD","dose":"1200mg","qty":"1#","freq":"QD","start":"02/26","end":"03/25"},{"hospital":"林口長庚","dept":"神經科","drug":"Aspirin 100mg 1# QDAC","dose":"","qty":"","freq":"","start":"","end":""}],"labs":[]},{"name":"龎曾瓊玉","bed":"D03","gender":"女","cat":"體檢住民","age":"81","adm":"112.04.13","drugs":[{"hospital":"聖保祿","dept":"神經內科","drug":"Syntam 1200mg 1# BID","dose":"1200mg","qty":"1#","freq":"BID","start":"02/13","end":"03/12"},{"hospital":"聖保祿","dept":"神經內科","drug":"Quetiapine 25mg 1# HS","dose":"25mg","qty":"1#","freq":"HS","start":"02/13","end":"03/12"},{"hospital":"聖保祿","dept":"神經內科","drug":"Norvasc 5mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"02/13","end":"03/12"}],"labs":[{"date":"115-02-24","source":"龎曾瓊玉","items":[{"name":"ACSugar","value":"100","abnormal":false},{"name":"Triglyceride","value":"83","abnormal":false},{"name":"HDLCholesterol","value":"41","abnormal":false},{"name":"LDLCholesterol","value":"119","abnormal":false},{"name":"Creatinine","value":"0.39(L)","abnormal":true},{"name":"e-GFR","value":"99.99","abnormal":false},{"name":"Urineprotein","value":"7.00","abnormal":false},{"name":"B.U.N.","value":"10","abnormal":false},{"name":"Albumin","value":"3.9","abnormal":false},{"name":"Hemoglobin","value":"12.3","abnormal":false},{"name":"UR-P.CR","value":"131.14","abnormal":false},{"name":"TotalCholesterol","value":"177","abnormal":false},{"name":"Alkaline-Phosphatase","value":"92","abnormal":false},{"name":"DirectBilirubin","value":"0.09","abnormal":false},{"name":"TotalProtein","value":"7.6","abnormal":false},{"name":"Potassium[K]","value":"4.2","abnormal":false},{"name":"W.B.C.Count","value":"5.0","abnormal":false},{"name":"R.B.C.Count","value":"3.98","abnormal":false},{"name":"Hematocrit","value":"35.3","abnormal":false},{"name":"M.C.V.","value":"88.8","abnormal":false},{"name":"M.C.H.C.","value":"34.7","abnormal":false},{"name":"Platelet","value":"270","abnormal":false},{"name":"NeturophilSegment","value":"62.0","abnormal":false},{"name":"Monocytes","value":"7.0","abnormal":false},{"name":"Basophilis","value":"1.1","abnormal":false},{"name":"Urinecreatinine","value":"53.38(L)","abnormal":true},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"(-)","abnormal":false},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"(-)","abnormal":false},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"13","abnormal":false},{"name":"S.G.P.T(ALT)","value":"4(L)","abnormal":true},{"name":"r-GTP(GGT)","value":"7(L)","abnormal":true},{"name":"TotalBilirubin","value":"0.62","abnormal":false},{"name":"Globulin","value":"3.7","abnormal":false},{"name":"A/GRatio","value":"1.1","abnormal":false},{"name":"Calcium[Ca]","value":"8.3(L)","abnormal":true},{"name":"Sodium[Na]","value":"138.1","abnormal":false},{"name":"Amylase","value":"30","abnormal":false},{"name":"UricAcid","value":"4.2","abnormal":false},{"name":"M.C.H.","value":"30.8","abnormal":false},{"name":"Lymphocyte","value":"28.0","abnormal":false},{"name":"Eosinophilic","value":"1.9","abnormal":false},{"name":"Color","value":"Yellow","abnormal":false},{"name":"Protein","value":"(-)","abnormal":false},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"6.5","abnormal":false},{"name":"U-RBC","value":"0-2","abnormal":false},{"name":"EPITHELIALCELLS","value":"0-4","abnormal":false},{"name":"Crystal","value":"(-)","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"(-)","abnormal":false},{"name":"Appearance","value":"Clear","abnormal":false},{"name":"Nitrite","value":"(-)","abnormal":false},{"name":"SPECIFICGRAVITY","value":"1.008","abnormal":false}]}]},{"name":"連月英","bed":"D04","gender":"女","cat":"體檢住民","age":"78","adm":"112.06.09","drugs":[{"hospital":"桃園療養院","dept":"精神科","drug":"Biperiden 2mg 1# BIDconst RESIDENTS_DATA = DATA_HERE;HS, 帕金森氏症","dose":"","qty":"","freq":"","start":"01/15","end":"02/13"},{"hospital":"桃園療養院","dept":"精神科","drug":"Seroquel 25mg 1# HS","dose":"25mg","qty":"1#","freq":"HS","start":"01/15","end":"02/13"}],"labs":[]},{"name":"楊玉妹","bed":"D05","gender":"女","cat":"體檢住民","age":"65","adm":"114.05.01","drugs":[{"hospital":"聯恩診所","dept":"家醫科","drug":"Diovan 80mg 1# QD","dose":"80mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Alpraline 0.5mg 1# HS","dose":"0.5mg","qty":"1#","freq":"HS","start":"03/06","end":"04/02"}],"labs":[]},{"name":"吳玉","bed":"D05","gender":"女","cat":"","age":"","adm":"","drugs":[{"hospital":"敏盛綜合醫院","dept":"家醫科","drug":"Famotidine 20mg 1# BID","dose":"20mg","qty":"1#","freq":"BID","start":"03/16","end":"04/12"},{"hospital":"敏盛綜合醫院","dept":"家醫科","drug":"losartan 50mg 1# QD","dose":"50mg","qty":"1#","freq":"QD","start":"03/16","end":"04/12"},{"hospital":"敏盛綜合醫院","dept":"家醫科","drug":"Atorvastatin 20mg 0.5# QDPM","dose":"20mg","qty":"0.5#","freq":"QDPM","start":"03/16","end":"04/12"},{"hospital":"敏盛綜合醫院","dept":"家醫科","drug":"Mosapride 5mg 1# BID","dose":"5mg","qty":"1#","freq":"BID","start":"03/16","end":"04/12"},{"hospital":"敏盛綜合醫院","dept":"家醫科","drug":"Janumet 50/500mg 1# QD","dose":"50/500mg","qty":"1#","freq":"QD","start":"03/16","end":"04/12"},{"hospital":"桃園療養院","dept":"精神科","drug":"Exelon 3mg 1# BID","dose":"3mg","qty":"1#","freq":"BID","start":"04/01","end":"04/29"},{"hospital":"桃園療養院","dept":"精神科","drug":"lonfadroxil 500mg (部桃泌尿科) 1# BID","dose":"","qty":"1#","freq":"BID","start":"04/01","end":"04/08"},{"hospital":"桃園療養院","dept":"精神科","drug":"Depakine 200mg 1# HS","dose":"200mg","qty":"1#","freq":"HS","start":"04/01","end":"04/29"},{"hospital":"桃園療養院","dept":"精神科","drug":"Ativan 0.5mg 1# BID","dose":"0.5mg","qty":"1#","freq":"BID","start":"04/01","end":"04/29"}],"labs":[]},{"name":"涂翁水仙","bed":"D06","gender":"女","cat":"體檢住民","age":"77","adm":"108.01.05","drugs":[{"hospital":"桃園療養院","dept":"精神科","drug":"Estazolam 2mg 1# HS","dose":"2mg","qty":"1#","freq":"HS","start":"03/03","end":"03/30"},{"hospital":"桃園療養院","dept":"精神科","drug":"Sennoside 12.5mg 2# HS","dose":"12.5mg","qty":"2#","freq":"HS","start":"03/03","end":"03/30"},{"hospital":"桃園療養院","dept":"精神科","drug":"biperiden 2mg 1# QD, 帕金森氏症","dose":"2mg","qty":"1#","freq":"QD","start":"03/03","end":"03/30"},{"hospital":"桃園療養院","dept":"精神科","drug":"Valproate Sodium 0.2gm/ml 2CC HS","dose":"","qty":"","freq":"HS","start":"03/03","end":"03/30"},{"hospital":"桃園療養院","dept":"精神科","drug":"Risperidone 1CC HS","dose":"","qty":"","freq":"HS","start":"03/03","end":"03/30"},{"hospital":"聖保祿","dept":"心臟血管內科","drug":"Spironolactone 25mg 0.5# QD","dose":"25mg","qty":"0.5#","freq":"QD","start":"03/03","end":"03/30"},{"hospital":"聖保祿","dept":"心臟血管內科","drug":"Concor 1.25mg 1# QD","dose":"1.25mg","qty":"1#","freq":"QD","start":"03/03","end":"03/30"},{"hospital":"聖保祿","dept":"心臟血管內科","drug":"Furosemide 40mg 1# ASORDER","dose":"","qty":"","freq":"","start":"03/03","end":"03/30"},{"hospital":"聖保祿","dept":"心臟血管內科","drug":"Metformin 500mg 0.5# BID","dose":"500mg","qty":"0.5#","freq":"BID","start":"03/03","end":"03/30"},{"hospital":"聖保祿","dept":"心臟血管內科","drug":"Trajenta 5mg 1# QD","dose":"","qty":"","freq":"","start":"","end":""}],"labs":[]},{"name":"周麗雲","bed":"D07","gender":"女","cat":"體檢住民","age":"68","adm":"114.06.11","drugs":[{"hospital":"署立桃園醫院","dept":"神經科","drug":"Warfarin 5mg 0.5# QDPM","dose":"5mg","qty":"0.5#","freq":"QDPM","start":"02/06","end":"03/05"},{"hospital":"署立桃園醫院","dept":"神經科","drug":"Donepezil F.C. 10mg 1# QDPM, 失智症","dose":"10mg","qty":"1#","freq":"QDPM","start":"02/06","end":"03/05"},{"hospital":"署立桃園醫院","dept":"神經科","drug":"Quetiapine 25mg 1# HS","dose":"25mg","qty":"1#","freq":"HS","start":"02/06","end":"03/05"},{"hospital":"署立桃園醫院","dept":"神經科","drug":"Valsartan 160mg 0.5# QD","dose":"160mg","qty":"0.5#","freq":"QD","start":"02/06","end":"03/05"},{"hospital":"署立桃園醫院","dept":"神經科","drug":"Risperidone 1mg 0.5# HS","dose":"1mg","qty":"0.5#","freq":"HS","start":"02/06","end":"03/05"},{"hospital":"署立桃園醫院","dept":"神經科","drug":"Warfarin 1mg 1# QDPM","dose":"1mg","qty":"1#","freq":"QDPM","start":"02/06","end":"03/05"}],"labs":[{"date":"115-02-24","source":"周麗雲","items":[{"name":"ACSugar","value":"90","abnormal":false},{"name":"Triglyceride","value":"102","abnormal":false},{"name":"HDLCholesterol","value":"40(L)","abnormal":true},{"name":"LDLCholesterol","value":"127","abnormal":false},{"name":"Creatinine","value":"0.58(L)","abnormal":true},{"name":"e-GFR","value":"98.51","abnormal":false},{"name":"Urineprotein","value":"12.00","abnormal":false},{"name":"B.U.N.","value":"16","abnormal":false},{"name":"Albumin","value":"3.6","abnormal":false},{"name":"Hemoglobin","value":"12.8","abnormal":false},{"name":"UR-P.CR","value":"69.17","abnormal":false},{"name":"TotalCholesterol","value":"187","abnormal":false},{"name":"Alkaline-Phosphatase","value":"81","abnormal":false},{"name":"DirectBilirubin","value":"0.14","abnormal":false},{"name":"TotalProtein","value":"6.6","abnormal":false},{"name":"Potassium[K]","value":"4.2","abnormal":false},{"name":"W.B.C.Count","value":"4.1","abnormal":false},{"name":"R.B.C.Count","value":"3.91","abnormal":false},{"name":"Hematocrit","value":"37.1","abnormal":false},{"name":"M.C.V.","value":"94.8","abnormal":false},{"name":"M.C.H.C.","value":"34.6","abnormal":false},{"name":"Platelet","value":"150","abnormal":false},{"name":"NeturophilSegment","value":"53.5","abnormal":false},{"name":"Monocytes","value":"6.5","abnormal":false},{"name":"Basophilis","value":"0.5","abnormal":false},{"name":"Urinecreatinine","value":"173.48","abnormal":false},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"1+(H)","abnormal":true},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"(-)","abnormal":false},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"25","abnormal":false},{"name":"S.G.P.T(ALT)","value":"12","abnormal":false},{"name":"r-GTP(GGT)","value":"12","abnormal":false},{"name":"TotalBilirubin","value":"1.01","abnormal":false},{"name":"Globulin","value":"3.0","abnormal":false},{"name":"A/GRatio","value":"1.2","abnormal":false},{"name":"Calcium[Ca]","value":"8.9","abnormal":false},{"name":"Sodium[Na]","value":"141.2","abnormal":false},{"name":"Amylase","value":"97","abnormal":false},{"name":"UricAcid","value":"5.3","abnormal":false},{"name":"ProthrombinTime","value":"18.00(H)","abnormal":true},{"name":"INR","value":"1.64(H)","abnormal":true},{"name":"MNPT","value":"11.0","abnormal":false},{"name":"M.C.H.","value":"32.8","abnormal":false},{"name":"Lymphocyte","value":"37.8","abnormal":false},{"name":"Eosinophilic","value":"1.7","abnormal":false},{"name":"Color","value":"DarkYellow","abnormal":false},{"name":"Protein","value":"(-)","abnormal":false},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"6.5","abnormal":false},{"name":"U-RBC","value":"0-2","abnormal":false},{"name":"EPITHELIALCELLS","value":"0-4","abnormal":false},{"name":"Crystal","value":"(-)","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"(-)","abnormal":false},{"name":"Appearance","value":"Clear","abnormal":false},{"name":"Nitrite","value":"(-)","abnormal":false},{"name":"SPECIFICGRAVITY","value":"1.021","abnormal":false}]}]},{"name":"安薇霞","bed":"D08","gender":"女","cat":"體檢住民","age":"75","adm":"114.03.28","drugs":[{"hospital":"台大醫院","dept":"精神科","drug":"Diazepam 5mg 2# HS","dose":"5mg","qty":"2#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"台大醫院","dept":"精神科","drug":"Zopiclone 7.5mg 3# HS","dose":"7.5mg","qty":"3#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"台大醫院","dept":"精神科","drug":"Xanax 0.5mg 1# TID","dose":"0.5mg","qty":"1#","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"台大醫院","dept":"精神科","drug":"Fluoxetine 20mg 1# BID","dose":"20mg","qty":"1#","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"台大醫院","dept":"精神科","drug":"Propranolol 10mg 1# BID","dose":"10mg","qty":"1#","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"台大醫院","dept":"精神科","drug":"Duloxetine 30mg 1# QD, 千憂解","dose":"30mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"台大醫院","dept":"精神科","drug":"Mirtazapine 30mg 1# HS, 憂鬱症","dose":"30mg","qty":"1#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"台大醫院","dept":"精神科","drug":"Diphenidol S.C. 25mg 1# BID","dose":"25mg","qty":"1#","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Norvasc 5mg 1# QD","dose":"","qty":"1#","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Omeprazole 20mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"}],"labs":[{"date":"115-02-24","source":"安薇霞","items":[{"name":"ACSugar","value":"92","abnormal":false},{"name":"Triglyceride","value":"72","abnormal":false},{"name":"HDLCholesterol","value":"40(L)","abnormal":true},{"name":"LDLCholesterol","value":"75","abnormal":false},{"name":"Creatinine","value":"0.55(L)","abnormal":true},{"name":"e-GFR","value":"95.52","abnormal":false},{"name":"Urineprotein","value":"8.20","abnormal":false},{"name":"B.U.N.","value":"16","abnormal":false},{"name":"Albumin","value":"3.4(L)","abnormal":true},{"name":"Hemoglobin","value":"12.2","abnormal":false},{"name":"UR-P.CR","value":"118.16","abnormal":false},{"name":"TotalCholesterol","value":"129","abnormal":false},{"name":"Alkaline-Phosphatase","value":"71","abnormal":false},{"name":"DirectBilirubin","value":"0.12","abnormal":false},{"name":"TotalProtein","value":"5.8(L)","abnormal":true},{"name":"Potassium[K]","value":"4.4","abnormal":false},{"name":"W.B.C.Count","value":"5.2","abnormal":false},{"name":"R.B.C.Count","value":"3.98","abnormal":false},{"name":"Hematocrit","value":"34.5","abnormal":false},{"name":"M.C.V.","value":"86.7","abnormal":false},{"name":"M.C.H.C.","value":"35.2","abnormal":false},{"name":"Platelet","value":"172","abnormal":false},{"name":"NeturophilSegment","value":"55.7","abnormal":false},{"name":"Monocytes","value":"8.1","abnormal":false},{"name":"Basophilis","value":"0.5","abnormal":false},{"name":"Urinecreatinine","value":"69.40","abnormal":false},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"(-)","abnormal":false},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"(-)","abnormal":false},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"11(L)","abnormal":true},{"name":"S.G.P.T(ALT)","value":"4(L)","abnormal":true},{"name":"r-GTP(GGT)","value":"9","abnormal":false},{"name":"TotalBilirubin","value":"0.64","abnormal":false},{"name":"Globulin","value":"2.4","abnormal":false},{"name":"A/GRatio","value":"1.4","abnormal":false},{"name":"Calcium[Ca]","value":"8.1(L)","abnormal":true},{"name":"Sodium[Na]","value":"140.2","abnormal":false},{"name":"Amylase","value":"20(L)","abnormal":true},{"name":"UricAcid","value":"3.4","abnormal":false},{"name":"M.C.H.","value":"30.6","abnormal":false},{"name":"Lymphocyte","value":"33.5","abnormal":false},{"name":"Eosinophilic","value":"2.2","abnormal":false},{"name":"Color","value":"Yellow","abnormal":false},{"name":"Protein","value":"(-)","abnormal":false},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"6.5","abnormal":false},{"name":"U-RBC","value":"0-2","abnormal":false},{"name":"EPITHELIALCELLS","value":"0-4","abnormal":false},{"name":"Crystal","value":"(-)","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"(-)","abnormal":false},{"name":"Appearance","value":"Clear","abnormal":false},{"name":"Nitrite","value":"(-)","abnormal":false},{"name":"SPECIFICGRAVITY","value":"1.014","abnormal":false}]}]},{"name":"戴文湖","bed":"D09","gender":"男","cat":"體檢住民","age":"73","adm":"113.01.01","drugs":[{"hospital":"聯恩診所","dept":"家醫科","drug":"Sennoside A+B 12mg 2# HS","dose":"12mg","qty":"2#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Levetiracetam 500mg 1# BID, 抗癲癇","dose":"500mg","qty":"1#","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Atenolol 100mg 1# QD","dose":"100mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Rivotril 0.5mg 1# HS","dose":"0.5mg","qty":"1#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Exforge 5/160/12.5mg 1# QD","dose":"5/160/12.5mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Simethicone 40mg 1# TID","dose":"40mg","qty":"1#","freq":"TID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Broen -C 20mg 1# TID","dose":"100mg","qty":"1#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Actein 66.7mg/gm 1PK BID","dose":"66.7mg/gm","qty":"1PK","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Aminophylline 100mg 1# HS","dose":"","qty":"","freq":"","start":"","end":""},{"hospital":"","dept":"","drug":"Pentop 1# BID","dose":"","qty":"","freq":"","start":"","end":""}],"labs":[{"date":"115-02-26","source":"戴文湖","items":[{"name":"ACSugar","value":"94","abnormal":false},{"name":"Triglyceride","value":"133","abnormal":false},{"name":"HDLCholesterol","value":"50","abnormal":false},{"name":"LDLCholesterol","value":"115","abnormal":false},{"name":"Creatinine","value":"0.75","abnormal":false},{"name":"e-GFR","value":"95.29","abnormal":false},{"name":"Urineprotein","value":"130.10(H)","abnormal":true},{"name":"B.U.N.","value":"14","abnormal":false},{"name":"Albumin","value":"3.6","abnormal":false},{"name":"Hemoglobin","value":"13.3","abnormal":false},{"name":"UR-P.CR","value":"6658.14(H)","abnormal":true},{"name":"TotalCholesterol","value":"192","abnormal":false},{"name":"Alkaline-Phosphatase","value":"80","abnormal":false},{"name":"DirectBilirubin","value":"0.07","abnormal":false},{"name":"TotalProtein","value":"7.4","abnormal":false},{"name":"Potassium[K]","value":"4.7","abnormal":false},{"name":"W.B.C.Count","value":"7.1","abnormal":false},{"name":"R.B.C.Count","value":"4.77","abnormal":false},{"name":"Hematocrit","value":"40.1","abnormal":false},{"name":"M.C.V.","value":"84.0","abnormal":false},{"name":"M.C.H.C.","value":"33.3","abnormal":false},{"name":"Platelet","value":"202","abnormal":false},{"name":"NeturophilSegment","value":"57.1","abnormal":false},{"name":"Monocytes","value":"9.3","abnormal":false},{"name":"Basophilis","value":"1.0","abnormal":false},{"name":"Urinecreatinine","value":"19.54(L)","abnormal":true},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"(-)","abnormal":false},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"(-)","abnormal":false},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"20","abnormal":false},{"name":"S.G.P.T(ALT)","value":"12","abnormal":false},{"name":"r-GTP(GGT)","value":"38","abnormal":false},{"name":"TotalBilirubin","value":"0.53","abnormal":false},{"name":"Globulin","value":"3.8","abnormal":false},{"name":"A/GRatio","value":"0.9(L)","abnormal":true},{"name":"Calcium[Ca]","value":"8.7","abnormal":false},{"name":"Sodium[Na]","value":"137.9","abnormal":false},{"name":"Amylase","value":"45","abnormal":false},{"name":"UricAcid","value":"7.2","abnormal":false},{"name":"M.C.H.","value":"28.0","abnormal":false},{"name":"Lymphocyte","value":"22.1","abnormal":false},{"name":"Eosinophilic","value":"10.5(H)","abnormal":true},{"name":"Color","value":"Yellow","abnormal":false},{"name":"Protein","value":"2+(H)","abnormal":true},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"8.0","abnormal":false},{"name":"U-RBC","value":"0-2","abnormal":false},{"name":"EPITHELIALCELLS","value":"0-4","abnormal":false},{"name":"Crystal","value":"(-)","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"1+(H)","abnormal":true},{"name":"Appearance","value":"Clear","abnormal":false},{"name":"Nitrite","value":"(-)","abnormal":false},{"name":"SPECIFICGRAVITY","value":"1.006","abnormal":false}]}]},{"name":"張茂坤","bed":"D11","gender":"男","cat":"體檢住民","age":"81","adm":"114.03.19","drugs":[{"hospital":"恩主公","dept":"神經外科","drug":"Transamin 250mg 1# QOD","dose":"250mg","qty":"1#","freq":"QOD","start":"03/04","end":"04/30"},{"hospital":"恩主公","dept":"神經外科","drug":"Atorvastatin 20mg 1# QDPM","dose":"20mg","qty":"1#","freq":"QDPM","start":"03/04","end":"04/30"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Duxetine 30mg 1# QD","dose":"30mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Clonopam 0.5mg 1# BID","dose":"0.5mg","qty":"1#","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Lacidipine 4mg 1# QD","dose":"4mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"tramadol 37.5+ acetaminophen 325 1# BID","dose":"","qty":"1#","freq":"PRN","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Mephenoxalone 1# BID","dose":"","qty":"1#","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Bisadyl 5mg 1# HS","dose":"5mg","qty":"1#","freq":"PRN","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Levetiracetam ER 500mg 0.5# QD","dose":"500mg","qty":"0.5#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Sennoside 2# HS","dose":"","qty":"1#","freq":"TIDAC","start":"03/06","end":"04/02"}],"labs":[]},{"name":"陳臣權","bed":"D12","gender":"男","cat":"體檢住民","age":"75","adm":"108.03.01","drugs":[{"hospital":"聯恩診所","dept":"家醫科","drug":"Quetiapine 25mg 1# HS","dose":"25mg","qty":"1#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Sevikar 5/40mg 1# QD","dose":"5/40mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Simethicone 40mg 1# TID","dose":"40mg","qty":"1#","freq":"TID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Domperidone 10mg 1# TID","dose":"10mg","qty":"1#","freq":"TID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Through 20mg 2# HS","dose":"20mg","qty":"2#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Pentop s. r 400mg 1# QD","dose":"400mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Wanse 1# BID","dose":"","qty":"1#","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Calowlin 1# TID","dose":"","qty":"1#","freq":"TID","start":"03/06","end":"04/02"}],"labs":[]},{"name":"廖得勝","bed":"D13","gender":"男","cat":"體檢住民","age":"90","adm":"114.01.13","drugs":[{"hospital":"804醫院","dept":"內分泌科","drug":"Ryzodeg 100unit/3mL 14U QDAC","dose":"100unit/3mL","qty":"14U","freq":"QDAC","start":"02/22","end":"03/21"},{"hospital":"804醫院","dept":"內分泌科","drug":"Through 12mg 2# HS","dose":"12mg","qty":"2#","freq":"HS","start":"02/22","end":"03/21"},{"hospital":"804醫院","dept":"內分泌科","drug":"Glimepiride/Metformin 2mg/500mg 1# QDAC","dose":"2mg/500mg","qty":"1#","freq":"QDAC","start":"02/22","end":"03/21"},{"hospital":"804醫院","dept":"內分泌科","drug":"Trajenta 5mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"02/22","end":"03/21"},{"hospital":"804醫院","dept":"肝膽腸胃科","drug":"Gascon 40mg 1# BID","dose":"40mg","qty":"1#","freq":"BID","start":"02/13","end":"03/12"},{"hospital":"804醫院","dept":"肝膽腸胃科","drug":"Mosapride 1# BID","dose":"","qty":"1#","freq":"BID","start":"02/13","end":"03/12"},{"hospital":"國軍桃園總醫院","dept":"心臟內科","drug":"Atorvastatin 1# QD","dose":"","qty":"1#","freq":"QD","start":"02/21","end":"03/20"},{"hospital":"國軍桃園總醫院","dept":"心臟內科","drug":"Bokey 100mg 1# QD","dose":"100mg","qty":"1#","freq":"QD","start":"02/21","end":"03/20"},{"hospital":"國軍桃園總醫院","dept":"心臟內科","drug":"Clopidogrel 75mg 1# QD","dose":"75mg","qty":"1#","freq":"QD","start":"02/21","end":"03/20"},{"hospital":"國軍桃園總醫院","dept":"心臟內科","drug":"Pantoprazole 40mg 1# QDAC","dose":"40mg","qty":"1#","freq":"QDAC","start":"02/21","end":"03/20"},{"hospital":"國軍桃園總醫院","dept":"心臟內科","drug":"Chloropheniramine 5CC QID, 咳利寧","dose":"","qty":"5cc","freq":"QID","start":"02/21","end":"03/20"}],"labs":[]},{"name":"梁有權","bed":"D14","gender":"男","cat":"體檢住民","age":"74","adm":"112.07.01","drugs":[{"hospital":"聖保祿","dept":"一般內科","drug":"Mexiletine 100mg 1# TID, 心律不整","dose":"100mg","qty":"1#","freq":"TID","start":"01/28","end":"02/24"},{"hospital":"聖保祿","dept":"一般內科","drug":"Trajenta 5mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"01/28","end":"02/24"},{"hospital":"聖保祿","dept":"一般內科","drug":"Spironolactone 25mg 1# QD","dose":"25mg","qty":"1#","freq":"QD","start":"01/28","end":"02/24"},{"hospital":"聖保祿","dept":"一般內科","drug":"Famotidine 20mg 1# QD","dose":"20mg","qty":"1#","freq":"QD","start":"01/28","end":"02/24"},{"hospital":"聖保祿","dept":"一般內科","drug":"Atorvastatin 40mg 1# QD","dose":"40mg","qty":"1#","freq":"QD","start":"01/28","end":"02/24"},{"hospital":"聖保祿","dept":"一般內科","drug":"Eurodin 2mg 1# PRN","dose":"2mg","qty":"1#","freq":"PRN","start":"01/28","end":"02/24"},{"hospital":"聖保祿","dept":"一般內科","drug":"Glimepiride/Metformin 1# BIDAC","dose":"","qty":"1#","freq":"BIDAC","start":"01/28","end":"02/24"},{"hospital":"聖保祿","dept":"一般內科","drug":"Furosemide 40mg 1# PRN","dose":"40mg","qty":"1#","freq":"PRN","start":"01/28","end":"02/24"},{"hospital":"聖保祿","dept":"一般內科","drug":"Sennoside 12mg 2# HS","dose":"12mg","qty":"2#","freq":"HS","start":"01/28","end":"02/24"},{"hospital":"聖保祿","dept":"一般內科","drug":"Toujeo soloStar 30U QDAC","dose":"","qty":"30U","freq":"QDAC","start":"01/28","end":"02/24"},{"hospital":"聖保祿","dept":"一般內科","drug":"Novorapid 10U TIDAC","dose":"","qty":"10U","freq":"TIDAC","start":"01/28","end":"02/24"},{"hospital":"聖保祿","dept":"一般內科","drug":"Plavix F.C. 75mg 1# QD","dose":"75mg","qty":"1#","freq":"QD","start":"01/28","end":"02/24"}],"labs":[]},{"name":"黃滿慧","bed":"D15","gender":"女","cat":"體檢住民","age":"72","adm":"113.07.26","drugs":[{"hospital":"桃園療養院","dept":"精神科","drug":"Risperdal 2mg 1# HS","dose":"2mg","qty":"1#","freq":"HS","start":"01/25","end":"02/23"},{"hospital":"桃園療養院","dept":"精神科","drug":"Quetiapine 25mg 1# HS","dose":"25mg","qty":"1#","freq":"HS","start":"01/25","end":"02/23"},{"hospital":"桃園療養院","dept":"精神科","drug":"Ativan 0.5mg 1# HS","dose":"0.5mg","qty":"1#","freq":"HS","start":"01/25","end":"02/23"},{"hospital":"聖保祿","dept":"神經內科","drug":"Cilostazol 1# BIDAC, 間歇性跛行","dose":"","qty":"1#","freq":"BIDAC","start":"02/12","end":"03/11"},{"hospital":"聖保祿","dept":"神經內科","drug":"Atorvastatin 10mg 1# QD","dose":"10mg","qty":"1#","freq":"QD","start":"02/12","end":"03/11"},{"hospital":"聖保祿","dept":"神經內科","drug":"Mosapride 5mg 1# TID","dose":"5mg","qty":"1#","freq":"TID","start":"02/12","end":"03/11"},{"hospital":"聖保祿","dept":"神經內科","drug":"Sennoside 12mg 1# HS","dose":"12mg","qty":"1#","freq":"HS","start":"02/12","end":"03/11"},{"hospital":"聖保祿","dept":"神經內科","drug":"Nebivolol 5mg 0.5# PRN","dose":"5mg","qty":"0.5#","freq":"PRN","start":"02/12","end":"03/11"},{"hospital":"聖保祿","dept":"神經內科","drug":"Nexium 40mg 1# QDPM","dose":"40mg","qty":"1#","freq":"QDPM","start":"02/12","end":"03/11"}],"labs":[]},{"name":"陳品秀","bed":"D16","gender":"女","cat":"未體檢住民","age":"","adm":"","drugs":[{"hospital":"署立桃園醫院","dept":"腎臟內科","drug":"Sennapur 12.5mg 2# HS","dose":"5mg","qty":"1#","freq":"QD","start":"03/05","end":"04/01"},{"hospital":"署立桃園醫院","dept":"腎臟內科","drug":"Mosapride 5mg 1# TID","dose":"70mg","qty":"1#","freq":"TID","start":"03/05","end":"04/01"},{"hospital":"署立桃園醫院","dept":"腎臟內科","drug":"Nexium 40mg 1# QDAC","dose":"0.1mg","qty":"1#","freq":"QDAC","start":"03/05","end":"04/01"},{"hospital":"署立桃園醫院","dept":"腎臟內科","drug":"Eltroxin 0.1mg 1# QDAC","dose":"","qty":"","freq":"","start":"","end":""},{"hospital":"署立桃園醫院","dept":"腎臟內科","drug":"Irbesartan 150mg 1# BID","dose":"","qty":"","freq":"","start":"","end":""},{"hospital":"署立桃園醫院","dept":"腎臟內科","drug":"Actein 200mg 1# BID","dose":"","qty":"","freq":"","start":"","end":""}],"labs":[]},{"name":"陳玲珠","bed":"D17","gender":"女","cat":"體檢住民","age":"72","adm":"113.02.11","drugs":[{"hospital":"聖保祿","dept":"神經內科","drug":"Trajenta 5mg 1# BID","dose":"5mg","qty":"1#","freq":"BID","start":"02/06","end":"03/05"},{"hospital":"聖保祿","dept":"神經內科","drug":"Famotidine 20mg 1# BID","dose":"20mg","qty":"1#","freq":"BID","start":"02/06","end":"03/05"},{"hospital":"聖保祿","dept":"神經內科","drug":"Levetiracetam sol. 100mg/300ml 5CC Q12H","dose":"100mg/300ml","qty":"5CC","freq":"Q12H","start":"02/06","end":"03/05"},{"hospital":"聖保祿","dept":"神經內科","drug":"Depakine 200mg 2CC Q8H","dose":"200mg","qty":"2CC","freq":"Q8H","start":"02/06","end":"03/05"},{"hospital":"聖保祿","dept":"神經內科","drug":"Piracetam 200mg 5CC Q12H","dose":"200mg","qty":"5CC","freq":"Q12H","start":"02/06","end":"03/05"},{"hospital":"聖保祿","dept":"神經內科","drug":"Acetin 600mg 1# BID","dose":"600mg","qty":"1#","freq":"BID","start":"02/06","end":"03/05"}],"labs":[]},{"name":"鄧亞秀","bed":"D18","gender":"女","cat":"體檢住民","age":"81","adm":"109.04.10","drugs":[{"hospital":"桃療","dept":"精神科","drug":"Risperidone 1mg 1# HS","dose":"1mg","qty":"1#","freq":"HS","start":"02/07","end":"03/06"},{"hospital":"桃療","dept":"精神科","drug":"Mesyrel 50mg 1# HS","dose":"50mg","qty":"1#","freq":"HS","start":"02/07","end":"03/06"},{"hospital":"桃療","dept":"精神科","drug":"Brotizolam 0.25mg 1# HS","dose":"0.25mg","qty":"1#","freq":"HS","start":"02/07","end":"03/06"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Omeprazole 20mg 1# QD","dose":"20mg","qty":"1#","freq":"QD","start":"02/06","end":"03/05"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Simethicone 40mg 1# TID","dose":"40mg","qty":"1#","freq":"TID","start":"02/06","end":"03/05"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Mosapride 5mg 1# TID","dose":"5mg","qty":"1#","freq":"TID","start":"02/06","end":"03/05"}],"labs":[]},{"name":"陳寶華","bed":"D19","gender":"女","cat":"體檢住民","age":"89","adm":"114.05.15","drugs":[{"hospital":"804醫院","dept":"心臟內科","drug":"Fexofenadine 60mg 1# QD","dose":"60mg","qty":"1#","freq":"QD","start":"02/17","end":"03/16"},{"hospital":"804醫院","dept":"心臟內科","drug":"Bokey 100mg 1# QD","dose":"100mg","qty":"1#","freq":"QD","start":"02/17","end":"03/16"},{"hospital":"804醫院","dept":"心臟內科","drug":"Amlodipine/Atorvastatin 5/20mg 1# QD","dose":"5/20mg","qty":"1#","freq":"QD","start":"02/17","end":"03/16"},{"hospital":"804醫院","dept":"心臟內科","drug":"Doxazosin XL 4mg 1# HS","dose":"4mg","qty":"1#","freq":"HS","start":"02/17","end":"03/16"},{"hospital":"804醫院","dept":"心臟內科","drug":"Betahistine 24mg 1# QD, 寧耳眩","dose":"24mg","qty":"1#","freq":"QD","start":"02/17","end":"03/16"},{"hospital":"804醫院","dept":"心臟內科","drug":"Propranolol  10mg 1# TID","dose":"10mg","qty":"1#","freq":"TID","start":"02/17","end":"03/16"},{"hospital":"804醫院","dept":"心臟內科","drug":"Rivotril 2mg 1# HS","dose":"2mg","qty":"1#","freq":"HS","start":"02/17","end":"03/16"},{"hospital":"804醫院","dept":"心臟內科","drug":"Alinamin-F 1# QD","dose":"","qty":"1#","freq":"QD","start":"02/17","end":"03/16"},{"hospital":"804醫院","dept":"心臟內科","drug":"Olmesartan 20mg 1# HS","dose":"20mg","qty":"1#","freq":"HS","start":"02/17","end":"03/16"},{"hospital":"804醫院","dept":"胸腔內科","drug":"Metformin X.R 500mg 1# QD","dose":"500mg","qty":"1#","freq":"QD","start":"03/12","end":"04/08"},{"hospital":"804醫院","dept":"胸腔內科","drug":"Trajenta 5mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"03/12","end":"04/08"}],"labs":[]},{"name":"李張寶桂","bed":"D20","gender":"女","cat":"未體檢住民","age":"","adm":"","drugs":[],"labs":[]},{"name":"楊鳳嬌","bed":"D21","gender":"女","cat":"體檢住民","age":"70","adm":"112.06.02","drugs":[{"hospital":"聯恩診所","dept":"家醫科","drug":"Euricon 50mg 1# QD","dose":"50mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"}],"labs":[{"date":"115-02-24","source":"楊鳳嬌","items":[{"name":"ACSugar","value":"86","abnormal":false},{"name":"Triglyceride","value":"111","abnormal":false},{"name":"HDLCholesterol","value":"56","abnormal":false},{"name":"LDLCholesterol","value":"125","abnormal":false},{"name":"Creatinine","value":"0.85","abnormal":false},{"name":"e-GFR","value":"73.65","abnormal":false},{"name":"B.U.N.","value":"22","abnormal":false},{"name":"Albumin","value":"4.1","abnormal":false},{"name":"Hemoglobin","value":"13.0","abnormal":false},{"name":"TotalCholesterol","value":"203(H)","abnormal":true},{"name":"Alkaline-Phosphatase","value":"88","abnormal":false},{"name":"DirectBilirubin","value":"0.18","abnormal":false},{"name":"TotalProtein","value":"6.6","abnormal":false},{"name":"Potassium[K]","value":"4.7","abnormal":false},{"name":"W.B.C.Count","value":"5.2","abnormal":false},{"name":"R.B.C.Count","value":"4.14","abnormal":false},{"name":"Hematocrit","value":"39.0","abnormal":false},{"name":"M.C.V.","value":"94.3","abnormal":false},{"name":"M.C.H.C.","value":"33.4","abnormal":false},{"name":"Platelet","value":"141","abnormal":false},{"name":"NeturophilSegment","value":"59.9","abnormal":false},{"name":"Monocytes","value":"7.8","abnormal":false},{"name":"Basophilis","value":"1.0","abnormal":false},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"(-)","abnormal":false},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"(-)","abnormal":false},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"28","abnormal":false},{"name":"S.G.P.T(ALT)","value":"14","abnormal":false},{"name":"r-GTP(GGT)","value":"15","abnormal":false},{"name":"TotalBilirubin","value":"1.05","abnormal":false},{"name":"Globulin","value":"2.5","abnormal":false},{"name":"A/GRatio","value":"1.6","abnormal":false},{"name":"Calcium[Ca]","value":"8.7","abnormal":false},{"name":"Sodium[Na]","value":"139.4","abnormal":false},{"name":"Amylase","value":"97","abnormal":false},{"name":"UricAcid","value":"3.0","abnormal":false},{"name":"M.C.H.","value":"31.5","abnormal":false},{"name":"Lymphocyte","value":"28.7","abnormal":false},{"name":"Eosinophilic","value":"2.6","abnormal":false},{"name":"Color","value":"Yellow","abnormal":false},{"name":"Protein","value":"(-)","abnormal":false},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"6.5","abnormal":false},{"name":"U-RBC","value":"0-2","abnormal":false},{"name":"EPITHELIALCELLS","value":"2-3","abnormal":false},{"name":"Crystal","value":"(-)","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"1+(H)","abnormal":true},{"name":"Appearance","value":"Clear","abnormal":false},{"name":"Nitrite","value":"(-)","abnormal":false},{"name":"SPECIFICGRAVITY","value":"1.010","abnormal":false}]},{"date":"114-08-19","source":"楊鳳嬌","items":[{"name":"ACSugar","value":"83","abnormal":false},{"name":"Triglyceride","value":"69","abnormal":false},{"name":"HDLCholesterol","value":"64","abnormal":false},{"name":"LDLCholesterol","value":"110","abnormal":false},{"name":"Creatinine","value":"0.97","abnormal":false},{"name":"e-GFR","value":"60.52","abnormal":false},{"name":"Urineprotein","value":"4.00","abnormal":false},{"name":"B.U.N.","value":"28(H)","abnormal":true},{"name":"Albumin","value":"4.1","abnormal":false},{"name":"Hemoglobin","value":"14.0","abnormal":false},{"name":"UR-P.CR","value":"75.34","abnormal":false},{"name":"TotalCholesterol","value":"188","abnormal":false},{"name":"Alkaline-Phosphatase","value":"84","abnormal":false},{"name":"DirectBilirubin","value":"0.20","abnormal":false},{"name":"TotalProtein","value":"7.0","abnormal":false},{"name":"Potassium[K]","value":"4.7","abnormal":false},{"name":"W.B.C.Count","value":"6.3","abnormal":false},{"name":"R.B.C.Count","value":"4.43","abnormal":false},{"name":"Hematocrit","value":"41.0","abnormal":false},{"name":"M.C.V.","value":"92.5","abnormal":false},{"name":"M.C.H.C.","value":"34.1","abnormal":false},{"name":"Platelet","value":"160","abnormal":false},{"name":"NeturophilSegment","value":"48.7","abnormal":false},{"name":"Monocytes","value":"7.0","abnormal":false},{"name":"Basophilis","value":"1.2","abnormal":false},{"name":"Urinecreatinine","value":"53.09(L)","abnormal":true},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"(-)","abnormal":false},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"(-)","abnormal":false},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"28","abnormal":false},{"name":"S.G.P.T(ALT)","value":"15","abnormal":false},{"name":"r-GTP(GGT)","value":"20","abnormal":false},{"name":"TotalBilirubin","value":"1.01","abnormal":false},{"name":"Globulin","value":"2.9","abnormal":false},{"name":"A/GRatio","value":"1.4","abnormal":false},{"name":"Calcium[Ca]","value":"8.7","abnormal":false},{"name":"Sodium[Na]","value":"142.0","abnormal":false},{"name":"Amylase","value":"98","abnormal":false},{"name":"UricAcid","value":"10.3(H)","abnormal":true},{"name":"M.C.H.","value":"31.6","abnormal":false},{"name":"Lymphocyte","value":"38.1","abnormal":false},{"name":"Eosinophilic","value":"5.0","abnormal":false},{"name":"Color","value":"Yellow","abnormal":false},{"name":"Protein","value":"(-)","abnormal":false},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"6.0","abnormal":false},{"name":"U-RBC","value":"0-2","abnormal":false},{"name":"EPITHELIALCELLS","value":"3-4","abnormal":false},{"name":"Crystal","value":"(-)","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"1+(H)","abnormal":true},{"name":"Appearance","value":"Clear","abnormal":false},{"name":"Nitrite","value":"(-)","abnormal":false},{"name":"SPECIFICGRAVITY","value":"1.012","abnormal":false}]}]},{"name":"徐培聲","bed":"D22","gender":"男","cat":"體檢住民","age":"77","adm":"112.07.28","drugs":[{"hospital":"國軍桃園總醫院","dept":"內分泌科","drug":"Novomix flexpen 100U/ml 3ml 8U BIDAC","dose":"100U/ml 3ml","qty":"8U","freq":"BIDAC","start":"03/07","end":"04/03"},{"hospital":"國軍桃園總醫院","dept":"內分泌科","drug":"Ascotyl 100mg 1# QD","dose":"100mg","qty":"1#","freq":"QD","start":"03/07","end":"04/03"},{"hospital":"國軍桃園總醫院","dept":"內分泌科","drug":"Twynsta 80/5mg 1# QD","dose":"4mg","qty":"1#","freq":"HS","start":"03/07","end":"04/03"},{"hospital":"國軍桃園總醫院","dept":"內分泌科","drug":"Biso 5mg 0.5# QD","dose":"5/160mg","qty":"1#","freq":"QDHS","start":"03/07","end":"04/03"},{"hospital":"國軍桃園總醫院","dept":"內分泌科","drug":"Haxasin XL 4mg 1# HS","dose":"1.5mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"國軍桃園總醫院","dept":"內分泌科","drug":"Twynsta 80/5mg 1# HS","dose":"4mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Indapamide 1.5mg 1# QD","dose":"12mg","qty":"2#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Pitavastatin 4mg 1# QD","dose":"66.7mg","qty":"1#","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Through 12mg 2# HS","dose":"","qty":"","freq":"","start":"","end":""},{"hospital":"聯恩診所","dept":"家醫科","drug":"Actein 66.7mg 1# BID","dose":"","qty":"","freq":"","start":"","end":""}],"labs":[]},{"name":"邱錦山","bed":"D23","gender":"男","cat":"體檢住民","age":"89","adm":"113.03.06","drugs":[{"hospital":"國軍桃園總醫院","dept":"心臟內科","drug":"Concor 1.25mg 1# QD","dose":"1.25mg","qty":"1#","freq":"QD","start":"02/18","end":"03/17"},{"hospital":"國軍桃園總醫院","dept":"心臟內科","drug":"Spironolactone 25mg 0.5# QD","dose":"25mg","qty":"0.5#","freq":"QD","start":"02/18","end":"03/17"},{"hospital":"國軍桃園總醫院","dept":"心臟內科","drug":"Furosemide 40mg 0.5# QD","dose":"40mg","qty":"0.5#","freq":"QD","start":"02/18","end":"03/17"},{"hospital":"聯恩診所","dept":"一般內科","drug":"Gascon 40mg 1# TID","dose":"","qty":"","freq":"","start":"","end":""}],"labs":[]},{"name":"張瑞興","bed":"D24","gender":"男","cat":"體檢住民","age":"66","adm":"113.01.13","drugs":[{"hospital":"敏盛綜合醫院","dept":"神經內科","drug":"Rivotril 0.5mg 1# HS","dose":"0.5mg","qty":"1#","freq":"HS","start":"02/07","end":"03/06"},{"hospital":"敏盛綜合醫院","dept":"神經內科","drug":"Clopidogrel 75mg 1# QD","dose":"75mg","qty":"1#","freq":"QD","start":"02/07","end":"03/06"},{"hospital":"敏盛綜合醫院","dept":"神經內科","drug":"Rosuvastatin 10mg 1# QD","dose":"10mg","qty":"1#","freq":"QD","start":"02/07","end":"03/06"},{"hospital":"敏盛綜合醫院","dept":"神經內科","drug":"Zolpidem 0.5# HS","dose":"","qty":"0.5#","freq":"HS","start":"02/07","end":"03/06"},{"hospital":"敏盛綜合醫院","dept":"神經內科","drug":"Through 20mg 2# HS","dose":"20mg","qty":"2#","freq":"HS","start":"02/07","end":"03/06"},{"hospital":"敏盛綜合醫院","dept":"神經內科","drug":"Levetiracetam 500mg 1# BID","dose":"500mg","qty":"1#","freq":"BID","start":"02/07","end":"03/06"}],"labs":[]},{"name":"黃得發","bed":"D25","gender":"男","cat":"未體檢住民","age":"","adm":"","drugs":[{"hospital":"國軍桃園總醫院","dept":"腎臟內科","drug":"Tamsulosin SR 0.2mg 1# HS","dose":"0.2mg","qty":"1#","freq":"HS","start":"02/19","end":"03/18"},{"hospital":"國軍桃園總醫院","dept":"腎臟內科","drug":"Omeprazole 20mg 1# QDAC","dose":"20mg","qty":"1#","freq":"QDAC","start":"02/19","end":"03/18"},{"hospital":"國軍桃園總醫院","dept":"腎臟內科","drug":"Sodium Bicarbonate 300mg 1# BID","dose":"300mg","qty":"1#","freq":"BID","start":"02/19","end":"03/18"},{"hospital":"國軍桃園總醫院","dept":"腎臟內科","drug":"mecomin 0.5mg 1# BID","dose":"0.5mg","qty":"1#","freq":"BID","start":"02/19","end":"03/18"},{"hospital":"國軍桃園總醫院","dept":"腎臟內科","drug":"kinax 0.5mg 1# HS","dose":"0.5mg","qty":"1#","freq":"HS","start":"02/19","end":"03/18"},{"hospital":"國軍桃園總醫院","dept":"腎臟內科","drug":"Gaslan 40mg 1# TID","dose":"40mg","qty":"1#","freq":"TID","start":"02/19","end":"03/18"},{"hospital":"國軍桃園總醫院","dept":"腎臟內科","drug":"Ciprofloxacin 500mg 1# QDAC","dose":"500mg","qty":"1#","freq":"QDAC","start":"02/19","end":"03/18"},{"hospital":"國軍桃園總醫院","dept":"腎臟內科","drug":"Alledine 60mg 1# BID","dose":"60mg","qty":"1#","freq":"BID","start":"02/19","end":"03/18"}],"labs":[]},{"name":"劉旺萬","bed":"D26","gender":"男","cat":"體檢住民","age":"72","adm":"112.04.11","drugs":[{"hospital":"聖保祿","dept":"神經內科","drug":"Aspirin 100mg 1# QDAC","dose":"100mg","qty":"1#","freq":"QDAC","start":"01/17","end":"02/15"},{"hospital":"聖保祿","dept":"神經內科","drug":"Famotidine 20mg 1# BID","dose":"20mg","qty":"1#","freq":"BID","start":"01/17","end":"02/15"},{"hospital":"聖保祿","dept":"神經內科","drug":"Dextromethorphan 20mg/90mg 1# PRN","dose":"20mg/90mg","qty":"1#","freq":"PRN","start":"01/17","end":"02/15"},{"hospital":"聖保祿","dept":"神經內科","drug":"Actein 600mg 1# BID","dose":"600mg","qty":"1#","freq":"BID","start":"01/17","end":"02/15"},{"hospital":"聖保祿","dept":"神經內科","drug":"Sennoside A+B 12mg 2# HS","dose":"12mg","qty":"2#","freq":"HS","start":"01/17","end":"02/15"},{"hospital":"聖保祿","dept":"神經內科","drug":"Levetiracetam 100mg/ml 5ML Q12H","dose":"100mg/ml","qty":"5ML","freq":"Q12H","start":"01/17","end":"02/15"},{"hospital":"聖保祿","dept":"神經內科","drug":"Livalo 2mg 1# QD","dose":"2mg","qty":"1#","freq":"QD","start":"01/17","end":"02/15"},{"hospital":"聖保祿","dept":"神經內科","drug":"Mesyrel 50mg 1# HS","dose":"50mg","qty":"1#","freq":"HS","start":"01/17","end":"02/15"}],"labs":[]},{"name":"郭景文","bed":"D27","gender":"男","cat":"體檢住民","age":"82","adm":"114.01.20","drugs":[{"hospital":"國軍桃園總醫院","dept":"腸胃內科","drug":"Nexium 40mg 1# QDAC","dose":"40mg","qty":"1#","freq":"QDAC","start":"02/12","end":"03/11"},{"hospital":"國軍桃園總醫院","dept":"腸胃內科","drug":"Famotidine 20mg 1# HS","dose":"20mg","qty":"1#","freq":"HS","start":"02/12","end":"03/11"},{"hospital":"聯恩診所","dept":"家醫科","drug":"MgO 1# TID","dose":"","qty":"2#","freq":"TID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Dailycare 1# QD","dose":"","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Allegra 60mg 1# BID","dose":"60mg","qty":"1#","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Amlodipine 5mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Alpraline 0.5mg 1# HS","dose":"0.5mg","qty":"1#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Tamlosin S.R. 0.2mg 1# HS","dose":"0.2mg","qty":"1#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Bensau 1# HS","dose":"","qty":"3#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Anoro Ellipta Inhaler 1PUFF HS","dose":"","qty":"1#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Acetin 600mg 1# BID","dose":"600mg","qty":"1#","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Eurodin 2mg 1# HS","dose":"2mg","qty":"1#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Orolisin 1# TID","dose":"","qty":"1#","freq":"TID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"DexCTM 1# TID","dose":"","qty":"1#","freq":"TID","start":"03/06","end":"04/02"},{"hospital":"","dept":"","drug":"Sennoside 3# HS","dose":"","qty":"","freq":"","start":"","end":""}],"labs":[{"date":"115-02-24","source":"郭景文","items":[{"name":"ACSugar","value":"98","abnormal":false},{"name":"Triglyceride","value":"61","abnormal":false},{"name":"HDLCholesterol","value":"39(L)","abnormal":true},{"name":"LDLCholesterol","value":"87","abnormal":false},{"name":"Creatinine","value":"1.06","abnormal":false},{"name":"e-GFR","value":"70.07","abnormal":false},{"name":"Ur-ACr","value":"27.69","abnormal":false},{"name":"B.U.N.","value":"12","abnormal":false},{"name":"Albumin","value":"3.4(L)","abnormal":true},{"name":"Hemoglobin","value":"13.2","abnormal":false},{"name":"TotalCholesterol","value":"138","abnormal":false},{"name":"Alkaline-Phosphatase","value":"85","abnormal":false},{"name":"DirectBilirubin","value":"0.11","abnormal":false},{"name":"TotalProtein","value":"6.1(L)","abnormal":true},{"name":"Potassium[K]","value":"4.4","abnormal":false},{"name":"W.B.C.Count","value":"3.4(L)","abnormal":true},{"name":"R.B.C.Count","value":"4.06(L)","abnormal":true},{"name":"Hematocrit","value":"38.3","abnormal":false},{"name":"M.C.V.","value":"94.2","abnormal":false},{"name":"M.C.H.C.","value":"34.4","abnormal":false},{"name":"Platelet","value":"166","abnormal":false},{"name":"NeturophilSegment","value":"47.1","abnormal":false},{"name":"Monocytes","value":"9.4","abnormal":false},{"name":"Basophilis","value":"1.1","abnormal":false},{"name":"Urinecreatinine","value":"54.17(L)","abnormal":true},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"(-)","abnormal":false},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"(-)","abnormal":false},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"16","abnormal":false},{"name":"S.G.P.T(ALT)","value":"7","abnormal":false},{"name":"r-GTP(GGT)","value":"12","abnormal":false},{"name":"TotalBilirubin","value":"0.60","abnormal":false},{"name":"Globulin","value":"2.7","abnormal":false},{"name":"A/GRatio","value":"1.3","abnormal":false},{"name":"Calcium[Ca]","value":"8.1(L)","abnormal":true},{"name":"Sodium[Na]","value":"141.1","abnormal":false},{"name":"Amylase","value":"67","abnormal":false},{"name":"UricAcid","value":"4.8","abnormal":false},{"name":"M.C.H.","value":"32.4","abnormal":false},{"name":"Lymphocyte","value":"29.4","abnormal":false},{"name":"Eosinophilic","value":"13.0(H)","abnormal":true},{"name":"Color","value":"Yellow","abnormal":false},{"name":"Protein","value":"(-)","abnormal":false},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"7.5","abnormal":false},{"name":"U-RBC","value":"0-2","abnormal":false},{"name":"EPITHELIALCELLS","value":"0-4","abnormal":false},{"name":"Crystal","value":"(-)","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"3+(H)","abnormal":true},{"name":"Appearance","value":"Cloudy","abnormal":false},{"name":"Nitrite","value":"(+)(H)","abnormal":true},{"name":"SPECIFICGRAVITY","value":"1.010","abnormal":false},{"name":"Microalbumin","value":"1.50","abnormal":false}]},{"date":"114-08-19","source":"郭景文","items":[{"name":"ACSugar","value":"94","abnormal":false},{"name":"Triglyceride","value":"71","abnormal":false},{"name":"HDLCholesterol","value":"44","abnormal":false},{"name":"LDLCholesterol","value":"68","abnormal":false},{"name":"Creatinine","value":"0.98","abnormal":false},{"name":"e-GFR","value":"77.83","abnormal":false},{"name":"Urineprotein","value":"19.00","abnormal":false},{"name":"B.U.N.","value":"15","abnormal":false},{"name":"Albumin","value":"3.4(L)","abnormal":true},{"name":"Hemoglobin","value":"13.0","abnormal":false},{"name":"UR-P.CR","value":"576.98(H)","abnormal":true},{"name":"TotalCholesterol","value":"126","abnormal":false},{"name":"Alkaline-Phosphatase","value":"77","abnormal":false},{"name":"DirectBilirubin","value":"0.10","abnormal":false},{"name":"TotalProtein","value":"6.3(L)","abnormal":true},{"name":"Potassium[K]","value":"5.5","abnormal":false},{"name":"W.B.C.Count","value":"4.8","abnormal":false},{"name":"R.B.C.Count","value":"4.18(L)","abnormal":true},{"name":"Hematocrit","value":"38.2","abnormal":false},{"name":"M.C.V.","value":"91.5","abnormal":false},{"name":"M.C.H.C.","value":"33.9","abnormal":false},{"name":"Platelet","value":"132","abnormal":false},{"name":"NeturophilSegment","value":"72.8","abnormal":false},{"name":"Monocytes","value":"11.8","abnormal":false},{"name":"Basophilis","value":"0.4","abnormal":false},{"name":"Urinecreatinine","value":"32.93(L)","abnormal":true},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"(-)","abnormal":false},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"(-)","abnormal":false},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"13","abnormal":false},{"name":"S.G.P.T(ALT)","value":"5(L)","abnormal":true},{"name":"r-GTP(GGT)","value":"10","abnormal":false},{"name":"TotalBilirubin","value":"0.61","abnormal":false},{"name":"Globulin","value":"2.9","abnormal":false},{"name":"A/GRatio","value":"1.2","abnormal":false},{"name":"Calcium[Ca]","value":"8.7","abnormal":false},{"name":"Sodium[Na]","value":"141.0","abnormal":false},{"name":"Amylase","value":"26(L)","abnormal":true},{"name":"UricAcid","value":"4.6","abnormal":false},{"name":"TSH","value":"3.080","abnormal":false},{"name":"T3","value":"0.55","abnormal":false},{"name":"FreeT4","value":"0.93","abnormal":false},{"name":"M.C.H.","value":"31.0","abnormal":false},{"name":"Lymphocyte","value":"12.2(L)","abnormal":true},{"name":"Eosinophilic","value":"2.8","abnormal":false},{"name":"Color","value":"Yellow","abnormal":false},{"name":"Protein","value":"(-)","abnormal":false},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"7.0","abnormal":false},{"name":"U-RBC","value":"0-2","abnormal":false},{"name":"EPITHELIALCELLS","value":"0-4","abnormal":false},{"name":"Crystal","value":"(-)","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"3+(H)","abnormal":true},{"name":"Appearance","value":"Cloudy","abnormal":false},{"name":"Nitrite","value":"(+)(H)","abnormal":true},{"name":"SPECIFICGRAVITY","value":"1.006","abnormal":false}]}]},{"name":"李義明","bed":"D28","gender":"男","cat":"體檢住民","age":"73","adm":"108.02.25","drugs":[{"hospital":"聖保祿","dept":"神經內科","drug":"Aspirin 100mg 1# QD","dose":"100mg","qty":"1#","freq":"QD","start":"02/27","end":"03/26"},{"hospital":"聖保祿","dept":"神經內科","drug":"Lercanidipine 10mg 1# BID","dose":"10mg","qty":"1#","freq":"BID","start":"02/27","end":"03/26"},{"hospital":"聖保祿","dept":"神經內科","drug":"Famotidine 20mg 1# HS","dose":"20mg","qty":"1#","freq":"HS","start":"02/27","end":"03/26"},{"hospital":"聖保祿","dept":"神經內科","drug":"Rivotril 0.5mg 1# HS","dose":"0.5mg","qty":"1#","freq":"HS","start":"02/27","end":"03/26"},{"hospital":"聖保祿","dept":"神經內科","drug":"Diovan 160mg 1# QD","dose":"160mg","qty":"1#","freq":"QD","start":"02/27","end":"03/26"},{"hospital":"聖保祿","dept":"神經內科","drug":"Atozet 10/20mg 1# Q1W","dose":"10/20mg","qty":"1#","freq":"Q1W","start":"02/27","end":"03/26"},{"hospital":"聖保祿","dept":"神經內科","drug":"Euricon 50mg 1# QD","dose":"50mg","qty":"1#","freq":"QD","start":"02/27","end":"03/26"},{"hospital":"聖保祿","dept":"神經內科","drug":"Tizanidine 2mg 1# Q12H, 骨骼肌鬆弛劑","dose":"2mg","qty":"1#","freq":"Q12H","start":"02/27","end":"03/26"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Celebrex 200mg 1# QD","dose":"200mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Alinamin-F 50 1# BID","dose":"","qty":"1#","freq":"BID","start":"03/06","end":"04/02"}],"labs":[{"date":"115-02-24","source":"李義明","items":[{"name":"ACSugar","value":"89","abnormal":false},{"name":"Triglyceride","value":"159(H)","abnormal":true},{"name":"HDLCholesterol","value":"35(L)","abnormal":true},{"name":"LDLCholesterol","value":"92","abnormal":false},{"name":"Creatinine","value":"1.37(H)","abnormal":true},{"name":"e-GFR","value":"54.47(L)","abnormal":true},{"name":"Urineprotein","value":"7.60","abnormal":false},{"name":"B.U.N.","value":"16","abnormal":false},{"name":"Albumin","value":"4.3","abnormal":false},{"name":"Hemoglobin","value":"15.5","abnormal":false},{"name":"UR-P.CR","value":"72.20","abnormal":false},{"name":"TotalCholesterol","value":"159","abnormal":false},{"name":"Alkaline-Phosphatase","value":"90","abnormal":false},{"name":"DirectBilirubin","value":"0.12","abnormal":false},{"name":"TotalProtein","value":"6.9","abnormal":false},{"name":"Potassium[K]","value":"5.0","abnormal":false},{"name":"W.B.C.Count","value":"4.8","abnormal":false},{"name":"R.B.C.Count","value":"4.94","abnormal":false},{"name":"Hematocrit","value":"45.6","abnormal":false},{"name":"M.C.V.","value":"92.3","abnormal":false},{"name":"M.C.H.C.","value":"33.9","abnormal":false},{"name":"Platelet","value":"222","abnormal":false},{"name":"NeturophilSegment","value":"53.7","abnormal":false},{"name":"Monocytes","value":"8.7","abnormal":false},{"name":"Basophilis","value":"1.6","abnormal":false},{"name":"Urinecreatinine","value":"105.27","abnormal":false},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"(-)","abnormal":false},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"(-)","abnormal":false},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"37","abnormal":false},{"name":"S.G.P.T(ALT)","value":"67(H)","abnormal":true},{"name":"r-GTP(GGT)","value":"15","abnormal":false},{"name":"TotalBilirubin","value":"0.63","abnormal":false},{"name":"Globulin","value":"2.6","abnormal":false},{"name":"A/GRatio","value":"1.7","abnormal":false},{"name":"Calcium[Ca]","value":"9.0","abnormal":false},{"name":"Sodium[Na]","value":"138.8","abnormal":false},{"name":"Amylase","value":"73","abnormal":false},{"name":"UricAcid","value":"5.5","abnormal":false},{"name":"M.C.H.","value":"31.3","abnormal":false},{"name":"Lymphocyte","value":"29.9","abnormal":false},{"name":"Eosinophilic","value":"6.1(H)","abnormal":true},{"name":"Color","value":"Yellow","abnormal":false},{"name":"Protein","value":"(-)","abnormal":false},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"6.5","abnormal":false},{"name":"U-RBC","value":"0-2","abnormal":false},{"name":"EPITHELIALCELLS","value":"0-4","abnormal":false},{"name":"Crystal","value":"(-)","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"(-)","abnormal":false},{"name":"Appearance","value":"Clear","abnormal":false},{"name":"Nitrite","value":"(-)","abnormal":false},{"name":"SPECIFICGRAVITY","value":"1.011","abnormal":false}]}]},{"name":"郭廖添","bed":"D29","gender":"男","cat":"體檢住民","age":"70","adm":"113.12.01","drugs":[{"hospital":"亞東","dept":"骨科","drug":"Tramacet 37.5mg 1# BID","dose":"37.5mg","qty":"1#","freq":"BID","start":"02/13","end":"03/12"},{"hospital":"亞東","dept":"骨科","drug":"Baclofen 5mg 1# HS","dose":"5mg","qty":"1#","freq":"HS","start":"02/13","end":"03/12"},{"hospital":"亞東","dept":"骨科","drug":"B12 500mg 1# BID","dose":"500mg","qty":"1#","freq":"BID","start":"02/13","end":"03/12"},{"hospital":"亞東","dept":"胸腔內科","drug":"Dimethicone 40mg 1# QID","dose":"40mg","qty":"1#","freq":"QID","start":"02/25","end":"03/24"},{"hospital":"亞東","dept":"胸腔內科","drug":"Metoclopramide 5/3.84mg 1# QID","dose":"5/3.84mg","qty":"1#","freq":"QID","start":"02/25","end":"03/24"},{"hospital":"亞東","dept":"胸腔內科","drug":"Relvar Ellipta inhalation 92/22mcg 1PUFF QD","dose":"92/22mcg","qty":"1PUFF","freq":"QD","start":"02/25","end":"03/24"},{"hospital":"亞東醫院","dept":"胸腔內科","drug":"Acetin 600mg 1PK BID","dose":"600mg","qty":"1PK","freq":"BID","start":"02/25","end":"03/24"},{"hospital":"亞東醫院","dept":"胸腔內科","drug":"Romicon-A mg 1# QID, 樂滅咳","dose":"","qty":"1#","freq":"QID","start":"02/25","end":"03/24"},{"hospital":"亞東醫院","dept":"心臟血管外科","drug":"Spironolactone 25mg 1# QD","dose":"25mg","qty":"1#","freq":"QD","start":"02/25","end":"03/24"},{"hospital":"亞東醫院","dept":"心臟血管外科","drug":"Bokey 100mg 1# QD","dose":"100mg","qty":"1#","freq":"QD","start":"02/25","end":"03/24"},{"hospital":"亞東醫院","dept":"心臟血管外科","drug":"Cilostazol 100mg 1# QD","dose":"100mg","qty":"1#","freq":"QD","start":"02/25","end":"03/24"},{"hospital":"亞東醫院","dept":"心臟血管外科","drug":"Famotidine 20mg 1# BID","dose":"20mg","qty":"1#","freq":"BID","start":"02/25","end":"03/24"},{"hospital":"署桃","dept":"腎臟內科","drug":"Kerendia 20mg 1# QD","dose":"20mg","qty":"1#","freq":"QD","start":"02/11","end":"03/10"},{"hospital":"署桃","dept":"腎臟內科","drug":"Silodosin 4mg 1# QD, BPH","dose":"4mg","qty":"1#","freq":"QD","start":"02/11","end":"03/10"},{"hospital":"署桃","dept":"腎臟內科","drug":"Cretrol 10/10mg 1# QD","dose":"10/10mg","qty":"1#","freq":"QD","start":"02/11","end":"03/10"},{"hospital":"署桃","dept":"腎臟內科","drug":"Bisadyl 5mg 3# HS","dose":"5mg","qty":"3#","freq":"HS","start":"02/11","end":"03/10"},{"hospital":"署桃","dept":"腎臟內科","drug":"Acetal 500mg 1# BID","dose":"500mg","qty":"1#","freq":"BID","start":"02/11","end":"03/10"},{"hospital":"署桃","dept":"腎臟內科","drug":"Xanax 0.5mg 1# HS","dose":"0.5mg","qty":"1#","freq":"HS","start":"02/11","end":"03/10"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Bio-Cal 450 mg 1# QD","dose":"450 mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"orolisin 5mg 1# TID","dose":"5mg","qty":"1#","freq":"TID","start":"03/06","end":"04/02"}],"labs":[]},{"name":"游龍次","bed":"D30","gender":"男","cat":"體檢住民","age":"65","adm":"112.11.01","drugs":[{"hospital":"國軍桃園總醫院","dept":"神經內科","drug":"Benzbromarone 50mg 1# QD","dose":"50mg","qty":"1#","freq":"QD","start":"02/13","end":"03/12"},{"hospital":"國軍桃園總醫院","dept":"神經內科","drug":"Pronolol 10mg 1# BID","dose":"10mg","qty":"1#","freq":"BID","start":"02/13","end":"03/12"},{"hospital":"國軍桃園總醫院","dept":"神經內科","drug":"Madopar 250mg 0.25# TID","dose":"250mg","qty":"0.25#","freq":"TID","start":"02/13","end":"03/12"},{"hospital":"國軍桃園總醫院","dept":"神經內科","drug":"Through 12mg 2# HS","dose":"12mg","qty":"2#","freq":"HS","start":"02/13","end":"03/12"},{"hospital":"國軍桃園總醫院","dept":"神經內科","drug":"Trajenta 5mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"02/13","end":"03/12"},{"hospital":"桃園療養院","dept":"精神科","drug":"Depakine 200mg 2# HS","dose":"200mg","qty":"2#","freq":"HS","start":"03/13","end":"04/09"},{"hospital":"桃園療養院","dept":"精神科","drug":"Seroquel 25mg 2# HS","dose":"25mg","qty":"2#","freq":"HS","start":"03/13","end":"04/09"},{"hospital":"桃園療養院","dept":"精神科","drug":"Bethanechol 25mg 1# TID","dose":"25mg","qty":"1#","freq":"TID","start":"03/13","end":"04/09"}],"labs":[]},{"name":"張施忠","bed":"D31","gender":"男","cat":"體檢住民","age":"65","adm":"112.06.23","drugs":[{"hospital":"敏盛綜合醫院","dept":"神經科","drug":"Bokey 100mg 1# QD","dose":"100mg","qty":"1#","freq":"QD","start":"02/06","end":"03/05"},{"hospital":"敏盛綜合醫院","dept":"神經科","drug":"Amlodipine 5mg 0.5# QD","dose":"5mg","qty":"0.5#","freq":"QD","start":"02/06","end":"03/05"},{"hospital":"敏盛綜合醫院","dept":"神經科","drug":"Piracetam 1200mg 1# QD","dose":"1200mg","qty":"1#","freq":"QD","start":"02/06","end":"03/05"},{"hospital":"敏盛綜合醫院","dept":"神經科","drug":"Livalo 2mg 1# QN","dose":"2mg","qty":"1#","freq":"QN","start":"02/06","end":"03/05"},{"hospital":"敏盛綜合醫院","dept":"神經科","drug":"Trajenta 5mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"02/06","end":"03/05"},{"hospital":"敏盛綜合醫院","dept":"神經科","drug":"Quetiapine 25mg 1# HS","dose":"25mg","qty":"1#","freq":"HS","start":"02/06","end":"03/05"}],"labs":[]},{"name":"陳洋鴻","bed":"D32","gender":"男","cat":"體檢住民","age":"74","adm":"113.03.01","drugs":[{"hospital":"聯恩診所","dept":"家醫科","drug":"Sevikar 5/40mg 1# QD","dose":"5/40mg","qty":"1#","freq":"QD","start":"02/06","end":"03/05"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Bokey 100mg 1# QD","dose":"100mg","qty":"1#","freq":"QD","start":"02/06","end":"03/05"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Carvedilol 25mg 1# BID","dose":"25mg","qty":"1#","freq":"BID","start":"02/06","end":"03/05"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Famotidine 20mg 1# BID","dose":"20mg","qty":"1#","freq":"BID","start":"02/06","end":"03/05"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Amlodipine 5mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"02/06","end":"03/05"}],"labs":[{"date":"115-02-24","source":"陳洋鴻","items":[{"name":"ACSugar","value":"98","abnormal":false},{"name":"Triglyceride","value":"61","abnormal":false},{"name":"HDLCholesterol","value":"38(L)","abnormal":true},{"name":"LDLCholesterol","value":"96","abnormal":false},{"name":"Creatinine","value":"1.55(H)","abnormal":true},{"name":"e-GFR","value":"46.67(L)","abnormal":true},{"name":"Urineprotein","value":"2.00","abnormal":false},{"name":"B.U.N.","value":"16","abnormal":false},{"name":"Albumin","value":"4.1","abnormal":false},{"name":"Hemoglobin","value":"14.1","abnormal":false},{"name":"UR-P.CR","value":"30.74","abnormal":false},{"name":"TotalCholesterol","value":"146","abnormal":false},{"name":"Alkaline-Phosphatase","value":"63","abnormal":false},{"name":"DirectBilirubin","value":"0.24","abnormal":false},{"name":"TotalProtein","value":"7.3","abnormal":false},{"name":"Potassium[K]","value":"5.0","abnormal":false},{"name":"W.B.C.Count","value":"5.4","abnormal":false},{"name":"R.B.C.Count","value":"5.02","abnormal":false},{"name":"Hematocrit","value":"41.7","abnormal":false},{"name":"M.C.V.","value":"83.1","abnormal":false},{"name":"M.C.H.C.","value":"33.9","abnormal":false},{"name":"Platelet","value":"218","abnormal":false},{"name":"NeturophilSegment","value":"59.8","abnormal":false},{"name":"Monocytes","value":"7.3","abnormal":false},{"name":"Basophilis","value":"0.4","abnormal":false},{"name":"Urinecreatinine","value":"65.07","abnormal":false},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"(-)","abnormal":false},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"(-)","abnormal":false},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"13","abnormal":false},{"name":"S.G.P.T(ALT)","value":"11","abnormal":false},{"name":"r-GTP(GGT)","value":"11","abnormal":false},{"name":"TotalBilirubin","value":"1.13","abnormal":false},{"name":"Globulin","value":"3.2","abnormal":false},{"name":"A/GRatio","value":"1.3","abnormal":false},{"name":"Calcium[Ca]","value":"8.6","abnormal":false},{"name":"Sodium[Na]","value":"137.7","abnormal":false},{"name":"Amylase","value":"45","abnormal":false},{"name":"UricAcid","value":"8.0(H)","abnormal":true},{"name":"M.C.H.","value":"28.2","abnormal":false},{"name":"Lymphocyte","value":"24.9","abnormal":false},{"name":"Eosinophilic","value":"7.6(H)","abnormal":true},{"name":"Color","value":"0-2","abnormal":false},{"name":"Protein","value":"0-4","abnormal":false},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"(-)","abnormal":false},{"name":"U-RBC","value":"2+(H)","abnormal":true},{"name":"EPITHELIALCELLS","value":"Clear","abnormal":false},{"name":"Crystal","value":"6.5","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"(-)","abnormal":false},{"name":"Appearance","value":"Yellow","abnormal":false},{"name":"Nitrite","value":"(+)(H)","abnormal":true},{"name":"SPECIFICGRAVITY","value":"1.010","abnormal":false}]}]},{"name":"陳有財","bed":"D33","gender":"男","cat":"體檢住民","age":"66","adm":"114.03.07","drugs":[{"hospital":"林口長庚","dept":"感染科","drug":"Rifampicin 300mg+INAH150mg 2# QDAC","dose":"300mg","qty":"2#","freq":"QDAC","start":"01/29","end":"02/27"},{"hospital":"林口長庚","dept":"感染科","drug":"vitaminB6 50mg 1# QD","dose":"50mg","qty":"1#","freq":"QD","start":"01/29","end":"02/27"},{"hospital":"林口長庚","dept":"感染科","drug":"Silymarin 150mg 1# BID","dose":"150mg","qty":"1#","freq":"BID","start":"01/29","end":"02/27"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Mesyrel 50mg 1# HS","dose":"50mg","qty":"1#","freq":"HS","start":"02/06","end":"03/05"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Zolpidem 1# HS","dose":"","qty":"1#","freq":"HS","start":"02/06","end":"03/05"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Quetiapine 25mg 1# HS","dose":"25mg","qty":"1#","freq":"HS","start":"02/06","end":"03/05"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Eurodin 2mg 1# HS","dose":"2mg","qty":"1#","freq":"HS","start":"02/06","end":"03/05"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Primperan 3.84mg 1# TID","dose":"3.84mg","qty":"1#","freq":"TID","start":"02/06","end":"03/05"}],"labs":[]},{"name":"簡永昌","bed":"D33","gender":"男","cat":"","age":"","adm":"","drugs":[{"hospital":"國軍桃園總醫院","dept":"精神科","drug":"B.H.L 2mg 1# BID","dose":"2mg","qty":"1#","freq":"BID","start":"04/01","end":"04/28"},{"hospital":"國軍桃園總醫院","dept":"精神科","drug":"Depakine 500mg 1# HS","dose":"500mg","qty":"1#","freq":"HS","start":"04/01","end":"04/28"},{"hospital":"國軍桃園總醫院","dept":"精神科","drug":"Depakine 200mg 1# QD","dose":"200mg","qty":"1#","freq":"QD","start":"04/01","end":"04/28"},{"hospital":"國軍桃園總醫院","dept":"精神科","drug":"Quetiapine 200mg 0.5# HS","dose":"200mg","qty":"0.5#","freq":"HS","start":"04/01","end":"04/28"},{"hospital":"國軍桃園總醫院","dept":"精神科","drug":"Cardiolol 10mg 1# TID","dose":"10mg","qty":"1#","freq":"TID","start":"04/01","end":"04/28"},{"hospital":"國軍桃園總醫院","dept":"精神科","drug":"Rivotril 2mg 2# HS","dose":"2mg","qty":"2#","freq":"HS","start":"04/01","end":"04/28"},{"hospital":"國軍桃園總醫院","dept":"精神科","drug":"Lorazepam 1mg 0.5# TID","dose":"1mg","qty":"0.5#","freq":"TID","start":"04/01","end":"04/28"},{"hospital":"國軍桃園總醫院","dept":"精神科","drug":"Stilnox F.C. 10mg 1# HS","dose":"10mg","qty":"1#","freq":"HS","start":"04/01","end":"04/28"},{"hospital":"國軍桃園總醫院","dept":"精神科","drug":"Sennoside A+B 12mg 1# HS","dose":"12mg","qty":"1#","freq":"HS","start":"04/01","end":"04/28"},{"hospital":"國軍桃園總醫院","dept":"精神科","drug":"Quetiapine 25mg 1# BID","dose":"25mg","qty":"1#","freq":"BID","start":"04/01","end":"04/28"}],"labs":[]},{"name":"吳順天","bed":"D34","gender":"男","cat":"體檢住民","age":"76","adm":"112.06.13","drugs":[{"hospital":"聯恩診所","dept":"家醫科","drug":"Tamsulosin S.R. 0.2mg 1# HS","dose":"0.2mg","qty":"1#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Famotidine 20mg 1# BID","dose":"20mg","qty":"1#","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Concor 5mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Betmiga 25mg 1# QD","dose":"25mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Mosapride 5mg 1# TID","dose":"5mg","qty":"1#","freq":"TID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Janumet 50/850mg 0.5# BID","dose":"50/850mg","qty":"0.5#","freq":"BID","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Sennoside A+B 12mg 2# HS","dose":"12mg","qty":"2#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Seroquel 25mg 2# HS","dose":"25mg","qty":"2#","freq":"HS","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Wanse 1# BID","dose":"","qty":"1#","freq":"BID","start":"03/06","end":"04/02"}],"labs":[{"date":"115-01-15","source":"吳順天","items":[{"name":"HBA1c","value":"5.8(H)","abnormal":true}]},{"date":"115-01-08","source":"吳順天","items":[{"name":"ACSugar","value":"102(H)","abnormal":true},{"name":"Triglyceride","value":"59","abnormal":false},{"name":"HDLCholesterol","value":"33(L)","abnormal":true},{"name":"LDLCholesterol","value":"56","abnormal":false},{"name":"Creatinine","value":"0.35(L)","abnormal":true},{"name":"e-GFR","value":"259.33","abnormal":false},{"name":"Urineprotein","value":"31.90(H)","abnormal":true},{"name":"B.U.N.","value":"14","abnormal":false},{"name":"Albumin","value":"2.7(L)","abnormal":true},{"name":"Hemoglobin","value":"8.6(L)","abnormal":true},{"name":"UR-P.CR","value":"1221.29(H)","abnormal":true},{"name":"TotalCholesterol","value":"101","abnormal":false},{"name":"Alkaline-Phosphatase","value":"73","abnormal":false},{"name":"DirectBilirubin","value":"0.06","abnormal":false},{"name":"TotalProtein","value":"7.6","abnormal":false},{"name":"Potassium[K]","value":"5.2","abnormal":false},{"name":"W.B.C.Count","value":"10.8(H)","abnormal":true},{"name":"R.B.C.Count","value":"2.96(L)","abnormal":true},{"name":"Hematocrit","value":"25.2(L)","abnormal":true},{"name":"M.C.V.","value":"85.2","abnormal":false},{"name":"M.C.H.C.","value":"34.2","abnormal":false},{"name":"Platelet","value":"506(H)","abnormal":true},{"name":"NeturophilSegment","value":"68.2","abnormal":false},{"name":"Monocytes","value":"9.2","abnormal":false},{"name":"Basophilis","value":"0.9","abnormal":false},{"name":"Urinecreatinine","value":"26.12(L)","abnormal":true},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"(-)","abnormal":false},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"2+(H)","abnormal":true},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"24","abnormal":false},{"name":"S.G.P.T(ALT)","value":"9","abnormal":false},{"name":"r-GTP(GGT)","value":"21","abnormal":false},{"name":"TotalBilirubin","value":"0.34","abnormal":false},{"name":"Globulin","value":"4.9(H)","abnormal":true},{"name":"A/GRatio","value":"0.6(L)","abnormal":true},{"name":"Calcium[Ca]","value":"8.5(L)","abnormal":true},{"name":"Sodium[Na]","value":"136.1","abnormal":false},{"name":"Amylase","value":"51","abnormal":false},{"name":"UricAcid","value":"3.0(L)","abnormal":true},{"name":"M.C.H.","value":"29.1","abnormal":false},{"name":"Lymphocyte","value":"19.5(L)","abnormal":true},{"name":"Eosinophilic","value":"2.2","abnormal":false},{"name":"Color","value":"Yellow","abnormal":false},{"name":"Protein","value":"(-)","abnormal":false},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"7.5","abnormal":false},{"name":"U-RBC","value":"21-25(H)","abnormal":true},{"name":"EPITHELIALCELLS","value":"0-4","abnormal":false},{"name":"Crystal","value":"(-)","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"1+(H)","abnormal":true},{"name":"Appearance","value":"Clear","abnormal":false},{"name":"Nitrite","value":"(-)","abnormal":false},{"name":"SPECIFICGRAVITY","value":"1.009","abnormal":false}]},{"date":"114-12-17","source":"吳順天","items":[{"name":"HBA1c","value":"5.5","abnormal":false}]}]},{"name":"林聰明","bed":"D35","gender":"男","cat":"體檢住民","age":"74","adm":"114.10.01","drugs":[{"hospital":"安馨大溪診所","dept":"腎臟內科","drug":"Trajenta 5mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"01/25","end":"02/21"},{"hospital":"安馨大溪診所","dept":"腎臟內科","drug":"Norvasc 5mg 1# BID","dose":"5mg","qty":"1#","freq":"BID","start":"01/25","end":"02/21"},{"hospital":"安馨大溪診所","dept":"腎臟內科","drug":"Seroquel 25mg 2# HS","dose":"25mg","qty":"2#","freq":"HS","start":"01/25","end":"02/21"},{"hospital":"安馨大溪診所","dept":"腎臟內科","drug":"Folic Acid 5mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"01/25","end":"02/21"},{"hospital":"安馨大溪診所","dept":"腎臟內科","drug":"B-complex 1# QD","dose":"","qty":"1#","freq":"QD","start":"01/25","end":"02/21"}],"labs":[]},{"name":"吳条金","bed":"D36","gender":"男","cat":"體檢住民","age":"77","adm":"114.01.01","drugs":[{"hospital":"聯恩診所","dept":"家醫科","drug":"Solaxin 200mg 1# BID","dose":"180mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"},{"hospital":"聯恩診所","dept":"家醫科","drug":"B-complex 1# BID","dose":"200mg","qty":"1#","freq":"QD","start":"03/06","end":"04/02"}],"labs":[]},{"name":"傅幸珠","bed":"D37","gender":"女","cat":"","age":"","adm":"","drugs":[{"hospital":"林口長庚","dept":"血液科","drug":"Glivec 4# QD","dose":"","qty":"4#","freq":"QD","start":"02/03","end":"02/11"},{"hospital":"林口長庚","dept":"血液科","drug":"HyDroxyUrea 500mg 1# QD","dose":"500mg","qty":"1#","freq":"QD","start":"02/03","end":"02/11"},{"hospital":"林口長庚","dept":"血液科","drug":"Nexium 40mg 1# QDAC","dose":"40mg","qty":"1#","freq":"QDAC","start":"02/03","end":"02/11"},{"hospital":"林口長庚","dept":"血液科","drug":"Seroquel 0.5# HS","dose":"","qty":"0.5#","freq":"HS","start":"02/03","end":"02/11"},{"hospital":"林口長庚","dept":"血液科","drug":"Actein 1# BID","dose":"","qty":"1#","freq":"BID","start":"02/03","end":"02/11"},{"hospital":"林口長庚","dept":"血液科","drug":"tramadol 37.5mg+acetaminophen 325mg","dose":"","qty":"1#","freq":"Q12H","start":"02/03","end":"02/11"},{"hospital":"林口長庚","dept":"骨外傷科","drug":"Cravit F.C. 500mg 1# QD","dose":"500mg","qty":"1#","freq":"QD","start":"01/30","end":"02/05"},{"hospital":"林口長庚","dept":"骨外傷科","drug":"Alinamin-F 1# TID","dose":"","qty":"1#","freq":"TID","start":"01/30","end":"02/12"},{"hospital":"林口長庚","dept":"骨外傷科","drug":"Furosemide 40mg 0.5# BID","dose":"40mg","qty":"0.5#","freq":"BID","start":"01/30","end":"02/12"},{"hospital":"林口長庚","dept":"骨外傷科","drug":"Cozaar 50mg 0.5# QD","dose":"50mg","qty":"0.5#","freq":"QD","start":"01/30","end":"02/12"},{"hospital":"林口長庚","dept":"骨外傷科","drug":"Concor 1.25mg 1# BID","dose":"1.25mg","qty":"1#","freq":"BID","start":"01/30","end":"02/12"},{"hospital":"林口長庚","dept":"骨外傷科","drug":"Simectite 1# PRN","dose":"","qty":"1#","freq":"PRN","start":"01/30","end":"02/12"}],"labs":[]},{"name":"陳正道","bed":"D38","gender":"男","cat":"體檢住民","age":"74","adm":"112.03.18","drugs":[{"hospital":"桃園療養院","dept":"精神科","drug":"Lorazepam 1mg 1# HS","dose":"1mg","qty":"1#","freq":"HS","start":"01/20","end":"02/18"},{"hospital":"桃園療養院","dept":"精神科","drug":"Rivastigmine 1.5mg 1# BID, 失智症","dose":"1.5mg","qty":"1#","freq":"BID","start":"01/20","end":"02/18"},{"hospital":"桃園療養院","dept":"精神科","drug":"Risperidone sol 1CC BIDconst RESIDENTS_DATA = DATA_HERE;HS, 思覺失調症","dose":"","qty":"1CC","freq":"BIDconst RESIDENTS_DATA = DATA_HERE;HS","start":"01/20","end":"02/18"}],"labs":[]},{"name":"張百成","bed":"D39","gender":"男","cat":"體檢住民","age":"71","adm":"108.07.04","drugs":[{"hospital":"聖保祿","dept":"神經內科","drug":"Sertraline 60ml/bot 2ML QD, 鬱症","dose":"60ml/bot","qty":"2ML","freq":"QD","start":"01/25","end":"02/23"},{"hospital":"聖保祿","dept":"神經內科","drug":"Piracetam 200ml/bot 6ML BID","dose":"200ml/bot","qty":"6ML","freq":"BID","start":"01/25","end":"02/23"},{"hospital":"聖保祿","dept":"神經內科","drug":"Lipanthyl 160mg 1# BIW","dose":"160mg","qty":"1#","freq":"BIW","start":"01/25","end":"02/23"},{"hospital":"聖保祿","dept":"神經內科","drug":"Norvasc 5mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"01/25","end":"02/23"},{"hospital":"聖保祿","dept":"神經內科","drug":"Bisadyl 5mg 1# HS","dose":"5mg","qty":"1#","freq":"HS","start":"01/25","end":"02/23"},{"hospital":"聖保祿","dept":"神經內科","drug":"Through 12mg 2# HS","dose":"12mg","qty":"2#","freq":"HS","start":"01/25","end":"02/23"}],"labs":[{"date":"115-02-24","source":"張百成","items":[{"name":"ACSugar","value":"75","abnormal":false},{"name":"Triglyceride","value":"107","abnormal":false},{"name":"HDLCholesterol","value":"42","abnormal":false},{"name":"LDLCholesterol","value":"93","abnormal":false},{"name":"Creatinine","value":"0.78","abnormal":false},{"name":"e-GFR","value":"95.34","abnormal":false},{"name":"Urineprotein","value":"8.50","abnormal":false},{"name":"B.U.N.","value":"7","abnormal":false},{"name":"Albumin","value":"4.1","abnormal":false},{"name":"Hemoglobin","value":"15.5","abnormal":false},{"name":"UR-P.CR","value":"167.39(H)","abnormal":true},{"name":"TotalCholesterol","value":"156","abnormal":false},{"name":"Alkaline-Phosphatase","value":"61","abnormal":false},{"name":"DirectBilirubin","value":"0.18","abnormal":false},{"name":"TotalProtein","value":"7.0","abnormal":false},{"name":"Potassium[K]","value":"5.4","abnormal":false},{"name":"W.B.C.Count","value":"7.7","abnormal":false},{"name":"R.B.C.Count","value":"5.00","abnormal":false},{"name":"Hematocrit","value":"45.4","abnormal":false},{"name":"M.C.V.","value":"90.8","abnormal":false},{"name":"M.C.H.C.","value":"34.3","abnormal":false},{"name":"Platelet","value":"298","abnormal":false},{"name":"NeturophilSegment","value":"76.2(H)","abnormal":true},{"name":"Monocytes","value":"6.6","abnormal":false},{"name":"Basophilis","value":"0.2","abnormal":false},{"name":"Urinecreatinine","value":"50.78(L)","abnormal":true},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"(-)","abnormal":false},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"(-)","abnormal":false},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"15","abnormal":false},{"name":"S.G.P.T(ALT)","value":"7","abnormal":false},{"name":"r-GTP(GGT)","value":"16","abnormal":false},{"name":"TotalBilirubin","value":"1.02","abnormal":false},{"name":"Globulin","value":"2.9","abnormal":false},{"name":"A/GRatio","value":"1.4","abnormal":false},{"name":"Calcium[Ca]","value":"8.5(L)","abnormal":true},{"name":"Sodium[Na]","value":"136.2","abnormal":false},{"name":"Amylase","value":"92","abnormal":false},{"name":"UricAcid","value":"2.8(L)","abnormal":true},{"name":"M.C.H.","value":"31.1","abnormal":false},{"name":"Lymphocyte","value":"16.2(L)","abnormal":true},{"name":"Eosinophilic","value":"0.8","abnormal":false},{"name":"Color","value":"Yellow","abnormal":false},{"name":"Protein","value":"(-)","abnormal":false},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"7.0","abnormal":false},{"name":"U-RBC","value":"0-2","abnormal":false},{"name":"EPITHELIALCELLS","value":"0-4","abnormal":false},{"name":"Crystal","value":"(-)","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"3+(H)","abnormal":true},{"name":"Appearance","value":"Cloudy","abnormal":false},{"name":"Nitrite","value":"(+)(H)","abnormal":true},{"name":"SPECIFICGRAVITY","value":"1.007","abnormal":false}]}]},{"name":"趙秀娥","bed":"D40","gender":"女","cat":"體檢住民","age":"67","adm":"114.06.16","drugs":[{"hospital":"聖保祿","dept":"一般內科","drug":"Levetiracetam 500mg 1# BID","dose":"500mg","qty":"1#","freq":"BID","start":"02/04","end":"03/03"},{"hospital":"聖保祿","dept":"一般內科","drug":"Norvasc 1# QD","dose":"","qty":"1#","freq":"QD","start":"02/04","end":"03/03"},{"hospital":"聖保祿","dept":"一般內科","drug":"Through 12mg 2# HS","dose":"12mg","qty":"2#","freq":"HS","start":"02/04","end":"03/03"}],"labs":[]},{"name":"高麗玉","bed":"D41","gender":"女","cat":"體檢住民","age":"74","adm":"114.10.20","drugs":[{"hospital":"聯恩診所","dept":"家醫科","drug":"seviker 5/20mg 1# QD","dose":"5/20mg","qty":"1#","freq":"QD","start":"02/10","end":"03/09"},{"hospital":"聯恩診所","dept":"家醫科","drug":"ginkgocentrate 9.6mg 1# BID","dose":"9.6mg","qty":"1#","freq":"BID","start":"02/10","end":"03/09"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Eurodin 2mg 1# HS","dose":"2mg","qty":"1#","freq":"HS","start":"02/10","end":"03/09"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Seroquel 25mg 2# HS","dose":"25mg","qty":"2#","freq":"HS","start":"02/10","end":"03/09"}],"labs":[{"date":"115-02-24","source":"高麗玉","items":[{"name":"ACSugar","value":"80","abnormal":false},{"name":"Triglyceride","value":"90","abnormal":false},{"name":"HDLCholesterol","value":"58","abnormal":false},{"name":"LDLCholesterol","value":"127","abnormal":false},{"name":"Creatinine","value":"0.48(L)","abnormal":true},{"name":"e-GFR","value":"99.32","abnormal":false},{"name":"Urineprotein","value":"0.10","abnormal":false},{"name":"B.U.N.","value":"11","abnormal":false},{"name":"Albumin","value":"3.9","abnormal":false},{"name":"Hemoglobin","value":"13.2","abnormal":false},{"name":"UR-P.CR","value":"1.38","abnormal":false},{"name":"TotalCholesterol","value":"203(H)","abnormal":true},{"name":"Alkaline-Phosphatase","value":"70","abnormal":false},{"name":"DirectBilirubin","value":"0.08","abnormal":false},{"name":"TotalProtein","value":"6.8","abnormal":false},{"name":"Potassium[K]","value":"5.2","abnormal":false},{"name":"W.B.C.Count","value":"6.2","abnormal":false},{"name":"R.B.C.Count","value":"4.27","abnormal":false},{"name":"Hematocrit","value":"38.9","abnormal":false},{"name":"M.C.V.","value":"91.1","abnormal":false},{"name":"M.C.H.C.","value":"33.9","abnormal":false},{"name":"Platelet","value":"313","abnormal":false},{"name":"NeturophilSegment","value":"70.9","abnormal":false},{"name":"Monocytes","value":"6.0","abnormal":false},{"name":"Basophilis","value":"0.7","abnormal":false},{"name":"Urinecreatinine","value":"72.61","abnormal":false},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"(-)","abnormal":false},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"(-)","abnormal":false},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"20","abnormal":false},{"name":"S.G.P.T(ALT)","value":"9","abnormal":false},{"name":"r-GTP(GGT)","value":"21","abnormal":false},{"name":"TotalBilirubin","value":"0.63","abnormal":false},{"name":"Globulin","value":"2.9","abnormal":false},{"name":"A/GRatio","value":"1.3","abnormal":false},{"name":"Calcium[Ca]","value":"8.5(L)","abnormal":true},{"name":"Sodium[Na]","value":"139.2","abnormal":false},{"name":"Amylase","value":"44","abnormal":false},{"name":"UricAcid","value":"4.9","abnormal":false},{"name":"M.C.H.","value":"30.9","abnormal":false},{"name":"Lymphocyte","value":"20.4","abnormal":false},{"name":"Eosinophilic","value":"2.0","abnormal":false},{"name":"Color","value":"Yellow","abnormal":false},{"name":"Protein","value":"(-)","abnormal":false},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"6.5","abnormal":false},{"name":"U-RBC","value":"0-2","abnormal":false},{"name":"EPITHELIALCELLS","value":"0-4","abnormal":false},{"name":"Crystal","value":"(-)","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"3+(H)","abnormal":true},{"name":"Appearance","value":"Cloudy","abnormal":false},{"name":"Nitrite","value":"(+)(H)","abnormal":true},{"name":"SPECIFICGRAVITY","value":"1.013","abnormal":false}]}]},{"name":"張林美麗","bed":"D42","gender":"女","cat":"體檢住民","age":"94","adm":"113.08.08","drugs":[{"hospital":"聯恩診所","dept":"家醫科","drug":"Diovan 80mg 1# QD","dose":"80mg","qty":"1#","freq":"QD","start":"02/08","end":"03/07"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Norvasc 5mg 1# QD","dose":"5mg","qty":"1#","freq":"QD","start":"02/08","end":"03/07"},{"hospital":"聯恩診所","dept":"家醫科","drug":"Fexofenadine 60mg 1# BID","dose":"60mg","qty":"1#","freq":"BID","start":"02/08","end":"03/07"}],"labs":[{"date":"115-02-24","source":"張林美麗","items":[{"name":"ACSugar","value":"84","abnormal":false},{"name":"Triglyceride","value":"51","abnormal":false},{"name":"HDLCholesterol","value":"54","abnormal":false},{"name":"LDLCholesterol","value":"99","abnormal":false},{"name":"Creatinine","value":"0.47(L)","abnormal":true},{"name":"e-GFR","value":"88.16","abnormal":false},{"name":"Urineprotein","value":"0.10","abnormal":false},{"name":"B.U.N.","value":"8","abnormal":false},{"name":"Albumin","value":"2.9(L)","abnormal":true},{"name":"Hemoglobin","value":"12.3","abnormal":false},{"name":"UR-P.CR","value":"3.28","abnormal":false},{"name":"TotalCholesterol","value":"163","abnormal":false},{"name":"Alkaline-Phosphatase","value":"86","abnormal":false},{"name":"DirectBilirubin","value":"0.11","abnormal":false},{"name":"TotalProtein","value":"5.6(L)","abnormal":true},{"name":"Potassium[K]","value":"3.9","abnormal":false},{"name":"W.B.C.Count","value":"4.7","abnormal":false},{"name":"R.B.C.Count","value":"3.66(L)","abnormal":true},{"name":"Hematocrit","value":"35.4","abnormal":false},{"name":"M.C.V.","value":"96.5","abnormal":false},{"name":"M.C.H.C.","value":"34.9","abnormal":false},{"name":"Platelet","value":"163","abnormal":false},{"name":"NeturophilSegment","value":"58.0","abnormal":false},{"name":"Monocytes","value":"8.7","abnormal":false},{"name":"Basophilis","value":"0.9","abnormal":false},{"name":"Urinecreatinine","value":"30.46(L)","abnormal":true},{"name":"Sugar","value":"(-)","abnormal":false},{"name":"Urobilinogen","value":"(-)","abnormal":false},{"name":"Bilirubin","value":"(-)","abnormal":false},{"name":"OB","value":"(-)","abnormal":false},{"name":"U-Bacteria","value":"(-)","abnormal":false},{"name":"Cast","value":"(-)","abnormal":false},{"name":"S.G.O.T(AST)","value":"12(L)","abnormal":true},{"name":"S.G.P.T(ALT)","value":"6","abnormal":false},{"name":"r-GTP(GGT)","value":"14","abnormal":false},{"name":"TotalBilirubin","value":"0.56","abnormal":false},{"name":"Globulin","value":"2.7","abnormal":false},{"name":"A/GRatio","value":"1.1","abnormal":false},{"name":"Calcium[Ca]","value":"8.5(L)","abnormal":true},{"name":"Sodium[Na]","value":"141.1","abnormal":false},{"name":"Amylase","value":"22(L)","abnormal":true},{"name":"UricAcid","value":"5.0","abnormal":false},{"name":"M.C.H.","value":"33.7(H)","abnormal":true},{"name":"Lymphocyte","value":"29.0","abnormal":false},{"name":"Eosinophilic","value":"3.4","abnormal":false},{"name":"Color","value":"Yellow","abnormal":false},{"name":"Protein","value":"(-)","abnormal":false},{"name":"Ketones","value":"(-)","abnormal":false},{"name":"PH","value":"7.5","abnormal":false},{"name":"U-RBC","value":"0-2","abnormal":false},{"name":"EPITHELIALCELLS","value":"3-4","abnormal":false},{"name":"Crystal","value":"(-)","abnormal":false},{"name":"Other","value":"(-)","abnormal":false},{"name":"U-LEUK","value":"3+(H)","abnormal":true},{"name":"Appearance","value":"Clear","abnormal":false},{"name":"Nitrite","value":"(+)(H)","abnormal":true},{"name":"SPECIFICGRAVITY","value":"1.005","abnormal":false}]}]},{"name":"邱陳水","bed":"D43","gender":"女","cat":"體檢住民","age":"93","adm":"114.12.01","drugs":[{"hospital":"張輝鵬診所","dept":"家醫科","drug":"Felodipine 5mg 0.5# QD","dose":"5mg","qty":"0.5#","freq":"QD","start":"02/23","end":"03/22"},{"hospital":"張輝鵬診所","dept":"家醫科","drug":"Diovan 80mg 0.5# QD","dose":"80mg","qty":"0.5#","freq":"QD","start":"02/23","end":"03/22"},{"hospital":"張輝鵬診所","dept":"家醫科","drug":"Atorvastatin 10mg 0.5# QD","dose":"10mg","qty":"0.5#","freq":"QD","start":"02/23","end":"03/22"},{"hospital":"張輝鵬診所","dept":"家醫科","drug":"Janumet 50/500 1# QD","dose":"50/500","qty":"1#","freq":"QD","start":"02/23","end":"03/22"},{"hospital":"恩主公","dept":"神經科","drug":"Memantine F.C. 10mg 1# QD, 失智症","dose":"10mg","qty":"1#","freq":"QD","start":"02/25","end":"03/24"}],"labs":[]}];
+
+        let currentResident = null;
+        let chartInstance = null;
+        let selectedLabItem = null;
+
+        function handleLogin() {
+            const password = document.getElementById('passwordInput').value;
+            if (password === '5888') {
+                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('mainApp').classList.add('show');
+                initializeApp();
+            } else {
+                alert('密碼錯誤');
+                document.getElementById('passwordInput').value = '';
+            }
+        }
+
+        function initializeApp() {
+            renderResidentList();
+            if (RESIDENTS_DATA.length > 0) {
+                selectResident(0);
+            }
+        }
+
+        function renderResidentList() {
+            const list = document.getElementById('residentList');
+            list.innerHTML = '';
+            RESIDENTS_DATA.forEach((resident, index) => {
+                const li = document.createElement('li');
+                li.className = 'resident-item';
+                li.textContent = resident.name;
+                li.onclick = () => selectResident(index);
+                list.appendChild(li);
+            });
+        }
+
+        function selectResident(index) {
+            currentResident = RESIDENTS_DATA[index];
+            
+            // Update sidebar selection
+            document.querySelectorAll('.resident-item').forEach((el, i) => {
+                el.classList.toggle('active', i === index);
+            });
+
+            // Close sidebar on mobile
+            closeSidebarOnMobile();
+
+            // Update top bar
+            updateTopBar();
+
+            // Update drugs table
+            updateDrugsTable();
+
+            // Update labs table
+            updateLabsTable();
+
+            // Close chart if open
+            document.getElementById('chartContainer').classList.remove('show');
+            selectedLabItem = null;
+        }
+
+        function updateTopBar() {
+            const topbar = document.getElementById('topbar');
+            topbar.innerHTML = `
+                <span class="tag name">${currentResident.name}</span>
+                <span class="tag">床位: ${currentResident.bed}</span>
+                <span class="tag">性別: ${currentResident.gender}</span>
+                <span class="tag">分類: ${currentResident.cat}</span>
+                <span class="tag">年齡: ${currentResident.age}</span>
+                <span class="tag">入住: ${currentResident.adm}</span>
+            `;
+        }
+
+        function updateDrugsTable() {
+            const container = document.getElementById('drugsTable');
+            const drugs = currentResident.drugs || [];
+
+            if (drugs.length === 0) {
+                container.innerHTML = '<div style="padding: 16px; text-align: center; color: #999;">無藥品資料</div>';
+                return;
+            }
+
+            let html = '<table class="drugs-table"><thead><tr><th>醫院</th><th>科別</th><th>藥品</th><th>劑量</th><th>數量</th><th>用法</th><th>起</th><th>迄</th></tr></thead><tbody>';
+            
+            drugs.forEach(drug => {
+                const freqClass = `freq-${drug.freq}`;
+                html += `<tr>
+                    <td>${drug.hospital}</td>
+                    <td>${drug.dept}</td>
+                    <td>${drug.drug}</td>
+                    <td>${drug.dose}</td>
+                    <td>${drug.qty}</td>
+                    <td><span class="freq-badge ${freqClass}">${drug.freq}</span></td>
+                    <td>${drug.start}</td>
+                    <td>${drug.end}</td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function updateLabsTable() {
+            const container = document.getElementById('labsTable');
+            const labs = currentResident.labs || [];
+
+            if (labs.length === 0) {
+                container.innerHTML = '<div style="padding: 16px; text-align: center; color: #999;">無檢驗結果</div>';
+                return;
+            }
+
+            // Collect all unique dates and items
+            const dateSet = new Set();
+            const itemsMap = new Map();
+
+            labs.forEach(labResult => {
+                dateSet.add(labResult.date);
+                (labResult.items || []).forEach(item => {
+                    if (!itemsMap.has(item.name)) {
+                        itemsMap.set(item.name, {});
+                    }
+                    itemsMap.get(item.name)[labResult.date] = item;
+                });
+            });
+
+            const dates = Array.from(dateSet).sort().reverse();
+            const items = Array.from(itemsMap.keys()).sort();
+
+            // Build pivot table
+            let html = '<table class="labs-table"><thead><tr><th>檢驗項目</th>';
+            dates.forEach(date => {
+                html += `<th>${date}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            items.forEach(itemName => {
+                const isActive = selectedLabItem === itemName;
+                html += `<tr><td class="item-name ${isActive ? 'active' : ''}" onclick="selectLabItem('${itemName.replace(/'/g, "\\'")}')">${itemName}</td>`;
+                dates.forEach(date => {
+                    const item = itemsMap.get(itemName)[date];
+                    if (item) {
+                        const valueClass = item.abnormal ? 'abnormal' : '';
+                        html += `<td class="${valueClass}">${item.value}</td>`;
+                    } else {
+                        html += '<td>-</td>';
+                    }
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function selectLabItem(itemName) {
+            selectedLabItem = itemName;
+            updateLabsTable();
+            drawChart(itemName);
+        }
+
+        function drawChart(itemName) {
+            const labs = currentResident.labs || [];
+            const dataPoints = [];
+
+            labs.forEach(labResult => {
+                const item = labResult.items.find(i => i.name === itemName);
+                if (item) {
+                    let value = parseFloat(item.value);
+                    if (isNaN(value)) {
+                        value = null;
+                    }
+                    dataPoints.push({
+                        date: labResult.date,
+                        value: value,
+                        abnormal: item.abnormal
+                    });
+                }
+            });
+
+            dataPoints.sort((a, b) => a.date.localeCompare(b.date));
+
+            const chartContainer = document.getElementById('chartContainer');
+            chartContainer.classList.add('show');
+
+            const ctx = document.getElementById('labChart').getContext('2d');
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const borderColors = dataPoints.map(p => p.abnormal ? '#dc2626' : '#22c55e');
+            const pointColors = dataPoints.map(p => p.abnormal ? '#dc2626' : '#3b82f6');
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dataPoints.map(p => p.date),
+                    datasets: [{
+                        label: itemName,
+                        data: dataPoints.map(p => p.value),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 5,
+                        pointBackgroundColor: pointColors,
+                        pointBorderColor: borderColors,
+                        pointBorderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }
+
+        document.getElementById('labChart').addEventListener('click', function() {
+            document.getElementById('chartContainer').classList.remove('show');
+            selectedLabItem = null;
+            updateLabsTable();
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
+        });
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+
+        function closeSidebarOnMobile() {
+            if (window.innerWidth < 600) {
+                document.getElementById('sidebar').classList.remove('open');
+            }
+        }
+
+        function triggerFileUpload() {
+            document.getElementById('fileInput').click();
+        }
+
+        // Handle password input Enter key
+        document.getElementById('passwordInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+
+        // File upload handler (placeholder)
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            alert('檔案上傳功能待實裝');
+        });
+    </script>
+</body>
+</html>
