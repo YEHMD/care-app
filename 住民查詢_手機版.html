@@ -1194,6 +1194,12 @@ const BRAND_MAP = {"acetal":"acetaminophen","acetin":"acetylcysteine","actein":"
             const borderColors = dataPoints.map(p => p.abnormal ? '#dc2626' : '#22c55e');
             const pointColors = dataPoints.map(p => p.abnormal ? '#dc2626' : '#3b82f6');
 
+            // Calculate Y range with padding
+            var values = dataPoints.map(p => p.value).filter(v => v !== null);
+            var yMin = Math.min(...values);
+            var yMax = Math.max(...values);
+            var yPad = (yMax - yMin) * 0.15 || 1;
+
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1204,25 +1210,39 @@ const BRAND_MAP = {"acetal":"acetaminophen","acetin":"acetylcysteine","actein":"
                         borderColor: '#3b82f6',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
                         borderWidth: 2,
-                        pointRadius: 5,
+                        pointRadius: 6,
                         pointBackgroundColor: pointColors,
                         pointBorderColor: borderColors,
                         pointBorderWidth: 2,
-                        tension: 0.4,
+                        tension: 0.3,
                         fill: true
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
+                    animation: false,
                     plugins: {
                         legend: {
                             display: true
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    var dp = dataPoints[ctx.dataIndex];
+                                    return itemName + ': ' + (dp ? dp.value : ctx.parsed.y) + (dp && dp.abnormal ? ' ⚠' : '');
+                                }
+                            }
                         }
                     },
                     scales: {
+                        x: {
+                            offset: true
+                        },
                         y: {
-                            beginAtZero: false
+                            beginAtZero: false,
+                            min: yMin - yPad,
+                            max: yMax + yPad
                         }
                     }
                 }
