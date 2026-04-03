@@ -345,11 +345,13 @@
         }
 
         .section-fullscreen {
-            flex: 1 1 100%;
+            flex: 1 1 100% !important;
+            display: flex !important;
         }
 
         .section-hidden {
-            display: none;
+            display: none !important;
+            flex: 0 0 0 !important;
         }
 
         #drugsTable {
@@ -1029,6 +1031,12 @@ const BRAND_MAP = {"acetal":"acetaminophen","acetin":"acetylcysteine","actein":"
             const labsBtn = labsSection.querySelector('.fullscreen-btn');
 
             const isCurrentlyFullscreen = section === 'drugs' ? drugsSection.classList.contains('section-fullscreen') : labsSection.classList.contains('section-fullscreen');
+
+            // Clear inline styles from adjustSectionSizes
+            drugsSection.style.flex = '';
+            drugsSection.style.overflow = '';
+            labsSection.style.flex = '';
+            labsSection.style.overflow = '';
 
             if (isCurrentlyFullscreen) {
                 // Exit fullscreen - restore both sections
