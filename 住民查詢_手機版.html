@@ -652,6 +652,52 @@
             // Close chart if open
             document.getElementById('chartContainer').classList.remove('show');
             selectedLabItem = null;
+
+            // Adjust section sizes
+            adjustSectionSizes();
+        }
+
+        function adjustSectionSizes() {
+            const container = document.querySelector('.content-container');
+            const drugsSection = document.getElementById('drugsSection');
+            const labsSection = document.getElementById('labsSection');
+            if (!container || !drugsSection || !labsSection) return;
+
+            // Reset to auto to measure natural height
+            drugsSection.style.flex = 'none';
+            labsSection.style.flex = 'none';
+            drugsSection.style.overflow = 'visible';
+            labsSection.style.overflow = 'visible';
+
+            const totalH = container.clientHeight;
+            const halfH = totalH / 2;
+            const drugsNatural = drugsSection.scrollHeight;
+            const labsNatural = labsSection.scrollHeight;
+
+            let drugsFlex, labsFlex;
+
+            if (drugsNatural <= halfH && labsNatural <= halfH) {
+                // Both fit in half — give each their natural size
+                drugsFlex = `0 0 auto`;
+                labsFlex = `0 0 auto`;
+            } else if (drugsNatural <= halfH) {
+                // Drugs small, labs gets the rest
+                drugsFlex = `0 0 ${drugsNatural}px`;
+                labsFlex = `1 1 0`;
+            } else if (labsNatural <= halfH) {
+                // Labs small, drugs gets the rest
+                drugsFlex = `1 1 0`;
+                labsFlex = `0 0 ${labsNatural}px`;
+            } else {
+                // Both big — split 50/50
+                drugsFlex = `1 1 50%`;
+                labsFlex = `1 1 50%`;
+            }
+
+            drugsSection.style.flex = drugsFlex;
+            labsSection.style.flex = labsFlex;
+            drugsSection.style.overflow = 'hidden';
+            labsSection.style.overflow = 'hidden';
         }
 
         function updateTopBar() {
